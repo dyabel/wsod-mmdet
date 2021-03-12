@@ -30,6 +30,7 @@ test_pipeline = [
 data = dict(
     samples_per_gpu=2,
     workers_per_gpu=2,
+    weak_ann_frac = 10,
     train=dict(
         type=dataset_type,
         ann_file=[data_root + 'VOC2007/trainval.json',

@@ -1,7 +1,6 @@
 
 import torch
 from mmcv.ops.nms import batched_nms
-
 from mmdet.core.bbox.iou_calculators import bbox_overlaps
 import torch.nn.functional as F
 
@@ -28,8 +27,10 @@ def bbox_select_per_class(multi_bboxes,
         tuple: (bboxes, labels, indices (optional)), tensors of shape (k, 5),
             (k), and (k). Labels are 0-based.
     """
-    multi_scores = torch.sigmoid(multi_scores)
+    # multi_scores = torch.sigmoid(multi_scores)
     num_classes = multi_scores.size(1) - 1
+    with torch.no_grad():
+        multi_scores = torch.softmax(multi_scores,dim=1)
     # exclude background category
     if multi_bboxes.shape[1] > 4:
         bboxes = multi_bboxes.view(multi_scores.size(0), -1, 4)
@@ -46,7 +47,7 @@ def bbox_select_per_class(multi_bboxes,
 
     # remove low scoring boxes
     img_level_label = img_level_label.view(1,-1).expand_as(scores).reshape(-1)
-    gt_class_inds = img_level_label.nonzero(as_tuple=False).squeeze(1)
+    gt_class_inds = img_level_label > 0
     bboxes = bboxes.reshape(-1, 4)
     scores = scores.reshape(-1)
     labels = labels.reshape(-1)
