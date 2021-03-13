@@ -328,10 +328,17 @@ class RoIHeadBranch1(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         oam_bboxes,oam_labels = bbox_select_per_class(bbox_results['bbox_pred'],
                                                       bbox_results['cls_score'],
                                                       img_level_label,
-                                                      score_thr=0.4,
+                                                      score_thr=0,
                                                       nms_cfg={'iou_thr':0.5},
-                                                      max_num=256
+                                                      max_num=10
                                                       )
+        # oam_bboxes,oam_labels = multiclass_nms(bbox_results['bbox_pred'],
+        #                                               bbox_results['cls_score'],
+        #                                               score_thr=0,
+        #                                               nms_cfg={'iou_thr':0.5},
+        #                                               max_num=10,
+        #                                               return_inds=False
+        #                                               )
         return bbox_results,oam_bboxes,oam_labels
 
     def _bbox_forward_train_weak(self, x, sampling_results, gt_bboxes, gt_labels,
@@ -351,10 +358,17 @@ class RoIHeadBranch1(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         oam_bboxes,oam_labels = bbox_select_per_class(bbox_oam_results_raw['bbox_pred'],
                                                       bbox_oam_results_raw['cls_score'],
                                                       img_level_label,
-                                                      score_thr=0.2,
+                                                      score_thr=0,
                                                       nms_cfg={'iou_thr':0.5},
-                                                      max_num=-1,
+                                                      max_num=10,
                                                       )
+        # oam_bboxes,oam_labels = multiclass_nms(bbox_oam_results_raw['bbox_pred'],
+        #                                               bbox_oam_results_raw['cls_score'],
+        #                                               score_thr=0,
+        #                                               nms_cfg={'iou_thr':0.5},
+        #                                               max_num=10,
+        #                                               return_inds=False
+        #                                               )
         return bbox_results, oam_bboxes, oam_labels
 
     def _mask_forward_train(self, x, sampling_results, bbox_feats, gt_masks,

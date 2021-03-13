@@ -155,6 +155,8 @@ class OICR(BaseDetector):
         Returns:
             dict[str, Tensor]: a dictionary of loss components
         """
+        # print('#'*100)
+        # print(gt_labels)
         x = self.extract_feat(img)
         losses = dict()
         x_strong = tuple([torch.unsqueeze(xx[0],0) for xx in x])
@@ -238,7 +240,7 @@ class OICR(BaseDetector):
         # print(gt_labels,oam_labels)
         if oam_labels[0].size() == torch.Size([0]):
             print(oam_labels)
-            raise EOFError
+            raise Exception
         losses.update(roi_losses_branch2_weak)
         losses.update(roi_losses_branch2_strong)
         return losses
