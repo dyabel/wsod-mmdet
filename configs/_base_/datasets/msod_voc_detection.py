@@ -33,28 +33,22 @@ data = dict(
     weak_ann_frac = 10,
     train=dict(
         type=dataset_type,
-        ann_file=[data_root + 'VOC2007/trainval.json',
-                  data_root + 'VOC2012/train.json'
-                  ],
+        ann_file=data_root + 'train.json',
         img_prefix=[data_root + 'VOC2007/JPEGImages',
                     data_root + 'VOC2012/JPEGImages'
                     ],
         pipeline=train_pipeline),
     val=dict(
         type=dataset_type,
-        ann_file=[data_root + 'VOC2007/test.json',
-                  data_root + 'VOC2012/val.json'
-                  ],
+        ann_file=data_root + 'val.json',
         img_prefix=[data_root + 'VOC2007/JPEGImages',
                     data_root + 'VOC2012/JPEGImages'
                     ],
         pipeline=test_pipeline),
     test=dict(
         type=dataset_type,
-        ann_file=[data_root + 'VOC2007/test.json',
-                  # data_root + 'VOC2012/val.json'
-                  ],
+        ann_file=data_root + 'VOC2007/val.json',
         img_prefix=[data_root + 'VOC2007/JPEGImages',
-                    # data_root + 'VOC2012/JPEGImages'
+                     data_root + 'VOC2012/JPEGImages'
                     ],
         pipeline=test_pipeline))

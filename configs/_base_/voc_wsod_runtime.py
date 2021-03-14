@@ -10,7 +10,7 @@ log_config = dict(
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
 load_from = None
-# resume_from = '/data/dy/work_dirs/wsod_voc_with_bba/latest.pth'
+# resume_from = 'work_dirs/wsod_voc_with_bba_r50/latest.pth'
 resume_from = None
 workflow = [('train', 1)]
 custom_hooks = [dict(type='MyHook')]
