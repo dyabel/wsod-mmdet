@@ -44,6 +44,7 @@ class VocMsodDataset(CustomDataset):
                  img_prefix='',
                  seg_prefix=None,
                  proposal_file=None,
+                 weak_ann_frac=10,
                  test_mode=False,
                  filter_empty_gt=True):
         super(VocMsodDataset,self).__init__(ann_file,pipeline,classes=classes,data_root=data_root,
@@ -65,7 +66,7 @@ class VocMsodDataset(CustomDataset):
                 self.id_labelattr[i] = -1
             for i in self.coco.catToImgs.keys():
                 self.coco.catToImgs[i] = list(set(self.coco.catToImgs[i]))
-                cat_strong_image_ids = random.sample(self.coco.catToImgs[i],len(self.coco.catToImgs[i])//10+len(self.coco.catToImgs[i])%10)
+                cat_strong_image_ids = random.sample(self.coco.catToImgs[i],len(self.coco.catToImgs[i])//weak_ann_frac+len(self.coco.catToImgs[i])%weak_ann_frac)
                 self.cat_weak_ids[i] = []
                 self.cat_strong_ids[i] = []
                 for j in self.coco.catToImgs[i]:
@@ -99,7 +100,6 @@ class VocMsodDataset(CustomDataset):
             list[dict]: Annotation info from COCO api.
         """
         self.coco = COCO(ann_file)
-
 
         self.cat_ids = self.coco.get_cat_ids(cat_names=self.CLASSES)
         self.cat2label = {cat_id: i for i, cat_id in enumerate(self.cat_ids)}

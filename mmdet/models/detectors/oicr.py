@@ -237,9 +237,9 @@ class OICR(BaseDetector):
         losses.update(roi_losses_branch1_weak)
         losses.update(roi_losses_branch1_strong)
         # print('#'*100)
-        # print(gt_labels,oam_labels)
+        # print(gt_labels[1],oam_labels)
         # if oam_labels[0].size() != torch.Size([0]):
-        #     print('oam_generation')
+        #     print('oam_generation',oam_labels[0].size())
             # raise Exception
         losses.update(roi_losses_branch2_weak)
         losses.update(roi_losses_branch2_strong)
