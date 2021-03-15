@@ -1,6 +1,6 @@
 _base_ = [
     '../_base_/models/oicr_fast_rcnn_r101_fpn.py',
-    '../_base_/datasets/msod_voc_detection.py',
+    '../_base_/datasets/msod_voc_detection_copy.py',
     '../_base_/schedules/schedule_msod_voc.py', '../_base_/voc_wsod_runtime.py'
 ]
 dataset_type = 'VocMsodDataset'
