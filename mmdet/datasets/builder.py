@@ -9,7 +9,8 @@ from mmcv.runner import get_dist_info
 from mmcv.utils import Registry, build_from_cfg
 from torch.utils.data import DataLoader
 
-from .samplers import DistributedGroupSampler, DistributedSampler, GroupSampler,WsodSampler
+from .samplers import DistributedGroupSampler, DistributedSampler, GroupSampler,WsodSampler,\
+    WsodDistributedSampler,WsodDistributedGroupSampler
 
 if platform.system() != 'Windows':
     # https://github.com/pytorch/pytorch/issues/973
@@ -106,7 +107,7 @@ def build_dataloader(dataset,
         # DistributedGroupSampler will definitely shuffle the data to satisfy
         # that images on each GPU are in the same group
         if shuffle:
-            sampler = DistributedGroupSampler(dataset, samples_per_gpu,
+            sampler = WsodDistributedGroupSampler(dataset, samples_per_gpu,
                                               world_size, rank)
         else:
             sampler = DistributedSampler(
@@ -117,7 +118,7 @@ def build_dataloader(dataset,
         sampler = WsodSampler(dataset, samples_per_gpu) if shuffle else None
         batch_size = num_gpus * samples_per_gpu
         num_workers = num_gpus * workers_per_gpu
-    sampler = WsodSampler(dataset, samples_per_gpu) if shuffle else None
+    # sampler = WsodSampler(dataset, samples_per_gpu) if shuffle else None
     print(sampler)
     init_fn = partial(
         worker_init_fn, num_workers=num_workers, rank=rank,

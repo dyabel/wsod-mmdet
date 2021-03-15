@@ -328,8 +328,8 @@ class RoIHeadBranch1(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         oam_bboxes,oam_labels = bbox_select_per_class(bbox_results['bbox_pred'],
                                                       bbox_results['cls_score'],
                                                       img_level_label,
-                                                      score_thr=0.1,
-                                                      nms_cfg={'iou_thr':0.5},
+                                                      score_thr=0,
+                                                      nms_cfg={'iou_threshold':0.5},
                                                       max_num=10
                                                       )
         # oam_bboxes,oam_labels = multiclass_nms(bbox_results['bbox_pred'],
@@ -359,7 +359,7 @@ class RoIHeadBranch1(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                       bbox_oam_results_raw['cls_score'],
                                                       img_level_label,
                                                       score_thr=0,
-                                                      nms_cfg={'iou_thr':0.5},
+                                                      nms_cfg={'iou_threshold':0.5},
                                                       max_num=10,
                                                       )
         # oam_bboxes,oam_labels = multiclass_nms(bbox_oam_results_raw['bbox_pred'],
