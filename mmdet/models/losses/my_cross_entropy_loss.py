@@ -99,7 +99,6 @@ def binary_cross_entropy(pred,
     tmp = pred > 1
     if tmp.any():
         print('pred>1')
-        print(pred)
     pred = pred.clamp(1e-6,1-1e-6)
     label = label.clamp(0,1)
     loss = F.binary_cross_entropy(pred,label)

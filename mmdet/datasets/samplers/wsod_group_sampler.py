@@ -52,23 +52,54 @@ class WsodDistributedGroupSampler(Sampler):
         self.total_size = self.num_samples * self.num_replicas
 
     def __iter__(self):
+        # indices = self.dataset.indices
+        # for i in self.dataset.cat_strong_ids.keys():
+        #     num_strong = len(self.dataset.cat_strong_ids[i])
+        #     if num_strong == 0:
+        #         continue
+        #     for j in range(len(self.dataset.cat_weak_ids[i])):
+        #         indices.append([self.dataset.id_idx[self.dataset.cat_strong_ids[i][j%num_strong]],self.dataset.id_idx[self.dataset.cat_weak_ids[i][j]]])
+        # indices = np.concatenate(indices)
+        # indices = indices.astype(np.int64).tolist()
+        # # self.num_samples = len(indices)//2
+
+        g = torch.Generator()
+        g.manual_seed(self.epoch)
         indices = []
-        for i in self.dataset.cat_strong_ids.keys():
-            num_strong = len(self.dataset.cat_strong_ids[i])
-            if num_strong == 0:
-                continue
-            for j in range(len(self.dataset.cat_weak_ids[i])):
-                indices.append([self.dataset.id_idx[self.dataset.cat_strong_ids[i][j%num_strong]],self.dataset.id_idx[self.dataset.cat_weak_ids[i][j]]])
-        indices = np.concatenate(indices)
-        indices = indices.astype(np.int64).tolist()
-        self.num_samples = len(indices)//2
-        if self.num_samples&1 != 0:
-           self.num_samples += 1
+        for i, size in enumerate(self.group_sizes):
+            if size > 0:
+                indice = np.where(self.flag == i)[0]
+                assert len(indice) == size
+                indice = indice.tolist()
+                extra = int(
+                    math.ceil(
+                        size * 1.0 / self.samples_per_gpu / self.num_replicas)
+                ) * self.samples_per_gpu * self.num_replicas - len(indice)
+                # pad indice
+                tmp = indice.copy()
+                for _ in range(extra // size):
+                    indice.extend(tmp)
+                indice.extend(tmp[:extra % size])
+                indices.extend(indice)
+
+        assert len(indices) == self.total_size
+
+        indices = [
+            indices[j] for i in list(
+                torch.randperm(
+                    len(indices) // self.samples_per_gpu, generator=g))
+            for j in range(i * self.samples_per_gpu, (i + 1) *
+                           self.samples_per_gpu)
+        ]
+
+        # if self.num_samples&1 != 0:
+        #     self.num_samples += 1
         offset = self.num_samples * self.rank
-        if offset>0 :
+        if offset > 0:
             indices = indices[offset::]
         else:
             indices = indices[offset:offset + self.num_samples]
+        # self.num_samples = len(indices)
         return iter(indices)
 
 
