@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 
 from .samplers import DistributedGroupSampler, DistributedSampler, GroupSampler,WsodSampler,\
     WsodDistributedSampler,WsodDistributedGroupSampler
+from mmcv.utils import print_log
 
 if platform.system() != 'Windows':
     # https://github.com/pytorch/pytorch/issues/973
@@ -110,7 +111,7 @@ def build_dataloader(dataset,
             sampler = WsodDistributedGroupSampler(dataset, samples_per_gpu,
                                               world_size, rank)
         else:
-            sampler = WsodDistributedSampler(
+            sampler = DistributedSampler(
                 dataset, world_size, rank, shuffle=False)
         batch_size = samples_per_gpu
         num_workers = workers_per_gpu
@@ -119,7 +120,8 @@ def build_dataloader(dataset,
         batch_size = num_gpus * samples_per_gpu
         num_workers = num_gpus * workers_per_gpu
     # sampler = WsodSampler(dataset, samples_per_gpu) if shuffle else None
-    print(sampler)
+    print_log(dataset)
+    print_log(sampler)
     init_fn = partial(
         worker_init_fn, num_workers=num_workers, rank=rank,
         seed=seed) if seed is not None else None

@@ -96,10 +96,10 @@ class WsodDistributedGroupSampler(Sampler):
         #     self.num_samples += 1
         offset = self.num_samples * self.rank
         if offset > 0:
-            indices = indices[offset::]
+            indices = indices[offset:offset+self.num_samples]
         else:
             indices = indices[offset:offset + self.num_samples]
-        # self.num_samples = len(indices)
+        assert self.num_samples == len(indices)
         return iter(indices)
 
 

@@ -15,7 +15,7 @@ from .xml_style import XMLDataset
 from .coco_msod_dataset import CoCoMsodDataset
 from .msod_dataset import MsodDataset
 from .voc_msod_dataset_iter import VocMsodDatasetIter
-from .voc_msod_dataset_back import VocMsodDataset
+from .voc_msod_dataset import VocMsodDataset
 
 __all__ = [
     'CustomDataset', 'XMLDataset', 'CocoDataset', 'DeepFashionDataset',
