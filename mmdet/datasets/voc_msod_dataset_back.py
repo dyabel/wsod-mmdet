@@ -82,11 +82,39 @@ class VocMsodDataset(CustomDataset):
                         self.id_labelattr[j] = False
             assert len(self.id_labelattr)==len(self.img_ids)
             print('allocating completed')
-            random_indices = torch.randperm(len(self.img_ids)-13)
-            random_indices = torch.cat((random_indices,random_indices))
-            # random_indices = self.match_imgs()
-            print(len(self.img_ids))
-            print(len(random_indices))
+            # random_indices = torch.randperm(len(self.img_ids))
+            # random_indices = torch.cat((random_indices,random_indices))
+            indices = []
+            for i in self.cat_strong_ids.keys():
+                num_strong = len(self.cat_strong_ids[i])
+                if num_strong == 0:
+                    continue
+                for j in range(len(self.cat_weak_ids[i])):
+                    indices.append([self.id_idx[self.cat_strong_ids[i][j % num_strong]],
+                                    self.id_idx[self.cat_weak_ids[i][j]]])
+            indices = np.concatenate(indices)
+            indices = indices.astype(np.int64).tolist()
+            for i in range(len(self.img_ids)):
+                if i not in indices:
+                    indices.append(i)
+                    print('append',i)
+            random_indices = torch.tensor(indices)
+            random_indices = random_indices[0:4000]
+
+
+            # random_indice = torch.randperm(len(self.img_ids))
+            # random_indice = []
+            # for i in range(len(self.img_ids)):
+            #     random_indice.append([1,i])
+            # np.random.shuffle(random_indice)
+            # random_indices = np.concatenate(random_indice)
+
+            # random_indice = torch.cat((random_indice,torch.randperm(1860)))
+            # random_indices=torch.unique(random_indices)
+            # assert  (np.unique(random_indices.numpy()) == np.unique(random_indice.numpy())).all()
+            # random_indices = random_indice
+            # print(len(self.img_ids))
+            # print(len(random_indices))
             self.data_infos = [self.data_infos[i] for i in valid_inds]
             self.data_infos = [self.data_infos[i] for i in random_indices]
             if self.proposals is not None:
@@ -176,17 +204,8 @@ class VocMsodDataset(CustomDataset):
         return [ann['category_id'] for ann in ann_info]
 
     def match_imgs(self):
-        indices = []
-        for i in self.cat_strong_ids.keys():
-            num_strong = len(self.cat_strong_ids[i])
-            if num_strong == 0:
-                continue
-            for j in range(len(self.cat_weak_ids[i])):
-                indices.append([self.id_idx[self.cat_strong_ids[i][j % num_strong]],
-                                self.id_idx[self.cat_weak_ids[i][j]]])
-        indices = np.concatenate(indices)
-        indices = indices.astype(np.int64).tolist()
-        return indices
+        pass
+        # return indices
 
     def _filter_imgs(self, min_size=32):
         """Filter images too small or without ground truths."""

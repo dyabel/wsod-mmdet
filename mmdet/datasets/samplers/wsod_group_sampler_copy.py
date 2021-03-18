@@ -5,9 +5,9 @@ import numpy as np
 import torch
 from mmcv.runner import get_dist_info
 from torch.utils.data import Sampler
-from mmcv.utils import print_log
 
-class WsodSampler(Sampler):
+
+class GroupSampler(Sampler):
 
     def __init__(self, dataset, samples_per_gpu=1):
         assert hasattr(dataset, 'flag')
@@ -27,7 +27,7 @@ class WsodSampler(Sampler):
                 continue
             indice = np.where(self.flag == i)[0]
             assert len(indice) == size
-            # np.random.shuffle(indice)
+            np.random.shuffle(indice)
             num_extra = int(np.ceil(size / self.samples_per_gpu)
                             ) * self.samples_per_gpu - len(indice)
             indice = np.concatenate(
@@ -47,7 +47,8 @@ class WsodSampler(Sampler):
     def __len__(self):
         return self.num_samples
 
-class WsodDistributedGroupSampler(Sampler):
+
+class DistributedGroupSampler(Sampler):
     """Sampler that restricts data loading to a subset of the dataset.
 
     It is especially useful in conjunction with
@@ -86,35 +87,27 @@ class WsodDistributedGroupSampler(Sampler):
         self.group_sizes = np.bincount(self.flag)
 
         self.num_samples = 0
-        # print_log('group_sizes')
-        # print_log(self.group_sizes)
         for i, j in enumerate(self.group_sizes):
             self.num_samples += int(
                 math.ceil(self.group_sizes[i] * 1.0 / self.samples_per_gpu /
                           self.num_replicas)) * self.samples_per_gpu
         self.total_size = self.num_samples * self.num_replicas
-        print('rank',self.rank,self.num_samples)
 
     def __iter__(self):
-        # indices = self.dataset.indices
-        # for i in self.dataset.cat_strong_ids.keys():
-        #     num_strong = len(self.dataset.cat_strong_ids[i])
-        #     if num_strong == 0:
-        #         continue
-        #     for j in range(len(self.dataset.cat_weak_ids[i])):
-        #         indices.append([self.dataset.id_idx[self.dataset.cat_strong_ids[i][j%num_strong]],self.dataset.id_idx[self.dataset.cat_weak_ids[i][j]]])
-        # indices = np.concatenate(indices)
-        # indices = indices.astype(np.int64).tolist()
-        # # self.num_samples = len(indices)//2
-
+        # deterministically shuffle based on epoch
         g = torch.Generator()
         g.manual_seed(self.epoch)
+
         indices = []
         for i, size in enumerate(self.group_sizes):
             if size > 0:
                 indice = np.where(self.flag == i)[0]
                 assert len(indice) == size
-                indice = indice.tolist()
+                # add .numpy() to avoid bug when selecting indice in parrots.
+                # TODO: check whether torch.randperm() can be replaced by
+                # numpy.random.permutation().
+                indice = indice[list(
+                    torch.randperm(int(size), generator=g).numpy())].tolist()
                 extra = int(
                     math.ceil(
                         size * 1.0 / self.samples_per_gpu / self.num_replicas)
@@ -136,19 +129,12 @@ class WsodDistributedGroupSampler(Sampler):
                            self.samples_per_gpu)
         ]
 
-        # if self.num_samples&1 != 0:
-        #     self.num_samples += 1
-        # print_log('rank')
-        # print_log(self.rank)
-
+        # subsample
         offset = self.num_samples * self.rank
-        indices = indices[offset:offset+self.num_samples]
-        assert self.num_samples == len(indices)
-        # print('num_samples',self.num_samples)
+        indices = indices[offset:offset + self.num_samples]
+        assert len(indices) == self.num_samples
+
         return iter(indices)
-
-
-
 
     def __len__(self):
         return self.num_samples

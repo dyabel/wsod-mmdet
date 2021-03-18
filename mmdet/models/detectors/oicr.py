@@ -157,6 +157,7 @@ class OICR(BaseDetector):
         """
         # print('#'*100)
         # print(gt_labels)
+        # print(strong_label)
         x = self.extract_feat(img)
         losses = dict()
         x_strong = tuple([torch.unsqueeze(xx[0],0) for xx in x])
