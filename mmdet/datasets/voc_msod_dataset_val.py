@@ -29,7 +29,7 @@ except AssertionError:
 
 
 @DATASETS.register_module()
-class VocMsodDataset(CustomDataset):
+class VocMsodDatasetVal(CustomDataset):
 
     CLASSES = ('aeroplane','bicycle','bird','boat','bottle','bus','car','cat','chair','cow',
                'diningtable','dog','horse','motorbike','person','pottedplant','sheep','sofa',
@@ -47,67 +47,47 @@ class VocMsodDataset(CustomDataset):
                  weak_ann_frac=10,
                  test_mode=False,
                  filter_empty_gt=True):
-        super(VocMsodDataset,self).__init__(ann_file,pipeline,classes=classes,data_root=data_root,
+        super(VocMsodDatasetVal,self).__init__(ann_file,pipeline,classes=classes,data_root=data_root,
                                          img_prefix=img_prefix,seg_prefix=seg_prefix,proposal_file=proposal_file,
                                          test_mode=test_mode,filter_empty_gt=filter_empty_gt)
         # filter images too small and containing no annotations
-        valid_inds = self._filter_imgs()
-        self.id_idx = {}
-        for idx, id in enumerate(self.img_ids):
-            self.id_idx[id] = idx
-        self.strong_image_ids = []
-        self.weak_image_ids = []
-        self.id_labelattr = {}
-        self.cat_strong_ids = {}
-        self.cat_weak_ids = {}
-        self.num_classes = len(self.CLASSES)
-        for i in self.img_ids:
-            self.id_labelattr[i] = -1
-        for i in self.coco.catToImgs.keys():
-            self.coco.catToImgs[i] = list(set(self.coco.catToImgs[i]))
-            cat_strong_image_ids = random.sample(self.coco.catToImgs[i],len(self.coco.catToImgs[i])//weak_ann_frac+len(self.coco.catToImgs[i])%weak_ann_frac)
-            self.cat_weak_ids[i] = []
-            self.cat_strong_ids[i] = []
-            for j in self.coco.catToImgs[i]:
-                if j not in self.img_ids:
-                    continue
-                if self.id_labelattr[j] != -1:
-                    continue
-                if j in cat_strong_image_ids:
-                    self.cat_strong_ids[i].append(j)
-                    self.id_labelattr[j] = True
-                else:
-                    self.cat_weak_ids[i].append(j)
-                    self.id_labelattr[j] = False
-        assert len(self.id_labelattr)==len(self.img_ids)
-        print('allocating completed')
-        self.match_imgs()
-        self.data_infos = [self.data_infos[i] for i in valid_inds]
-        self.data_infos = [self.data_infos[i] for i in self.indices]
-        if self.proposals is not None:
-            self.proposals = [self.proposals[i] for i in valid_inds]
-            self.proposals = [self.proposals[i] for i in self.indices]
-        self.img_ids = [self.img_ids[i] for i in self.indices]
-        assert len(self.indices) == len(self.img_ids)
-        for i,j in enumerate(self.img_ids):
-            assert j == self.data_infos[i]['id']
-        # print_log('number of img_ids')
-        # print_log(len(self.img_ids))
-
-        # set group flag for the sampler
-        self._set_group_flag()
-        # print(len(self),len(self.data_infos))
-
-    def _set_group_flag(self):
-        self.flag = np.zeros(len(self), dtype=np.uint8)
-        half_len = len(self) // 2
-        if half_len&1 != 0:
-            half_len += 1
-        for i in range(half_len):
-            self.flag[i] = 1
-
-
-
+        if not test_mode:
+            valid_inds = self._filter_imgs()
+            self.id_idx = {}
+            for idx, id in enumerate(self.img_ids):
+                self.id_idx[id] = idx
+            self.strong_image_ids = []
+            self.weak_image_ids = []
+            self.id_labelattr = {}
+            self.cat_strong_ids = {}
+            self.cat_weak_ids = {}
+            self.num_classes = len(self.CLASSES)
+            for i in self.img_ids:
+                self.id_labelattr[i] = -1
+            for i in self.coco.catToImgs.keys():
+                self.coco.catToImgs[i] = list(set(self.coco.catToImgs[i]))
+                cat_strong_image_ids = random.sample(self.coco.catToImgs[i],len(self.coco.catToImgs[i])//weak_ann_frac+len(self.coco.catToImgs[i])%weak_ann_frac)
+                self.cat_weak_ids[i] = []
+                self.cat_strong_ids[i] = []
+                for j in self.coco.catToImgs[i]:
+                    if j not in self.img_ids:
+                        continue
+                    if self.id_labelattr[j] != -1:
+                        continue
+                    if j in cat_strong_image_ids:
+                        self.cat_strong_ids[i].append(j)
+                        self.id_labelattr[j] = True
+                    else:
+                        self.cat_weak_ids[i].append(j)
+                        self.id_labelattr[j] = False
+            # print(self.id_labelattr)
+            assert len(self.id_labelattr)==len(self.img_ids)
+            print('allocating completed')
+            self.data_infos = [self.data_infos[i] for i in valid_inds]
+            if self.proposals is not None:
+                self.proposals = [self.proposals[i] for i in valid_inds]
+            # set group flag for the sampler
+            self._set_group_flag()
 
 
     def load_annotations(self, ann_file):
@@ -148,13 +128,6 @@ class VocMsodDataset(CustomDataset):
         ann_info = self.coco.load_anns(ann_ids)
         return self._parse_ann_info(self.data_infos[idx], ann_info)
 
-    def __len__(self):
-        """Total number of samples of data."""
-        # if self.test_mode:
-        # print('length returned')
-        # print(len(self.data_infos))
-        return len(self.data_infos)
-
     def get_cat_ids(self, idx):
         """Get COCO category ids by index.
 
@@ -169,18 +142,6 @@ class VocMsodDataset(CustomDataset):
         ann_ids = self.coco.get_ann_ids(img_ids=[img_id])
         ann_info = self.coco.load_anns(ann_ids)
         return [ann['category_id'] for ann in ann_info]
-
-    def match_imgs(self):
-        self.indices = []
-        for i in self.cat_strong_ids.keys():
-            num_strong = len(self.cat_strong_ids[i])
-            if num_strong == 0:
-                continue
-            for j in range(len(self.cat_weak_ids[i])):
-                self.indices.append([self.id_idx[self.cat_strong_ids[i][j % num_strong]],
-                                self.id_idx[self.cat_weak_ids[i][j]]])
-        self.indices = np.concatenate(self.indices)
-        self.indices = self.indices.astype(np.int64).tolist()
 
     def _filter_imgs(self, min_size=32):
         """Filter images too small or without ground truths."""

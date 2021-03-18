@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from mmcv.runner import get_dist_info
 from torch.utils.data import Sampler
+from mmcv.utils import print_log
 
 class WsodDistributedGroupSampler(Sampler):
     """Sampler that restricts data loading to a subset of the dataset.
@@ -45,11 +46,14 @@ class WsodDistributedGroupSampler(Sampler):
         self.group_sizes = np.bincount(self.flag)
 
         self.num_samples = 0
+        # print_log('group_sizes')
+        # print_log(self.group_sizes)
         for i, j in enumerate(self.group_sizes):
             self.num_samples += int(
                 math.ceil(self.group_sizes[i] * 1.0 / self.samples_per_gpu /
                           self.num_replicas)) * self.samples_per_gpu
         self.total_size = self.num_samples * self.num_replicas
+        print('rank',self.rank,self.num_samples)
 
     def __iter__(self):
         # indices = self.dataset.indices
@@ -94,12 +98,13 @@ class WsodDistributedGroupSampler(Sampler):
 
         # if self.num_samples&1 != 0:
         #     self.num_samples += 1
+        # print_log('rank')
+        # print_log(self.rank)
+
         offset = self.num_samples * self.rank
-        if offset > 0:
-            indices = indices[offset:offset+self.num_samples]
-        else:
-            indices = indices[offset:offset + self.num_samples]
+        indices = indices[offset:offset+self.num_samples]
         assert self.num_samples == len(indices)
+        # print('num_samples',self.num_samples)
         return iter(indices)
 
 

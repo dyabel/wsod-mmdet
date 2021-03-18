@@ -29,12 +29,22 @@ except AssertionError:
 
 
 @DATASETS.register_module()
-class VocMsodDataset(CustomDataset):
+class CoCoMsodDataset(CustomDataset):
 
-    CLASSES = ('aeroplane','bicycle','bird','boat','bottle','bus','car','cat','chair','cow',
-               'diningtable','dog','horse','motorbike','person','pottedplant','sheep','sofa',
-               'trian','tvmonitor'
-               )
+    CLASSES = ('person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
+               'train', 'truck', 'boat', 'traffic light', 'fire hydrant',
+               'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog',
+               'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe',
+               'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+               'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat',
+               'baseball glove', 'skateboard', 'surfboard', 'tennis racket',
+               'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl',
+               'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot',
+               'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
+               'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop',
+               'mouse', 'remote', 'keyboard', 'cell phone', 'microwave',
+               'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock',
+               'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush')
 
     def __init__(self,
                  ann_file,
@@ -47,7 +57,7 @@ class VocMsodDataset(CustomDataset):
                  weak_ann_frac=10,
                  test_mode=False,
                  filter_empty_gt=True):
-        super(VocMsodDataset,self).__init__(ann_file,pipeline,classes=classes,data_root=data_root,
+        super(CoCoMsodDataset,self).__init__(ann_file,pipeline,classes=classes,data_root=data_root,
                                          img_prefix=img_prefix,seg_prefix=seg_prefix,proposal_file=proposal_file,
                                          test_mode=test_mode,filter_empty_gt=filter_empty_gt)
         # filter images too small and containing no annotations
@@ -89,14 +99,11 @@ class VocMsodDataset(CustomDataset):
             self.proposals = [self.proposals[i] for i in self.indices]
         self.img_ids = [self.img_ids[i] for i in self.indices]
         assert len(self.indices) == len(self.img_ids)
-        for i,j in enumerate(self.img_ids):
-            assert j == self.data_infos[i]['id']
         # print_log('number of img_ids')
         # print_log(len(self.img_ids))
 
         # set group flag for the sampler
         self._set_group_flag()
-        # print(len(self),len(self.data_infos))
 
     def _set_group_flag(self):
         self.flag = np.zeros(len(self), dtype=np.uint8)
@@ -464,6 +471,7 @@ class VocMsodDataset(CustomDataset):
         while True:
             data = self.prepare_train_img(idx)
             if data is None:
+                print('rand_another')
                 idx = self._rand_another(idx)
                 continue
             return data

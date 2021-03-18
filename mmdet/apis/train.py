@@ -42,6 +42,7 @@ def train_detector(model,
                    timestamp=None,
                    meta=None):
     logger = get_root_logger(cfg.log_level)
+    print('validate',validate)
 
     # prepare data loaders
     dataset = dataset if isinstance(dataset, (list, tuple)) else [dataset]
@@ -75,7 +76,7 @@ def train_detector(model,
     #     print(data_batch)
     # put model on gpus
     if distributed:
-        find_unused_parameters = cfg.get('find_unused_parameters', True)
+        find_unused_parameters = cfg.get('find_unused_parameters', False)
         # Sets the `find_unused_parameters` parameter in
         # torch.nn.parallel.DistributedDataParallel
         model = MMDistributedDataParallel(
@@ -83,7 +84,6 @@ def train_detector(model,
             device_ids=[torch.cuda.current_device()],
             broadcast_buffers=False,
             find_unused_parameters=find_unused_parameters)
-        # print('distributed training')
     else:
         model = MMDataParallel(
             model.cuda(cfg.gpu_ids[0]), device_ids=cfg.gpu_ids)
@@ -110,7 +110,6 @@ def train_detector(model,
         optimizer_config = cfg.optimizer_config
 
     # register hooks
-    # print(dir(optimizer_config))
     runner.register_training_hooks(cfg.lr_config, optimizer_config,
                                    cfg.checkpoint_config, cfg.log_config,
                                    cfg.get('momentum_config', None))

@@ -2,6 +2,7 @@ import math
 
 import torch
 from torch.utils.data import DistributedSampler as _DistributedSampler
+from mmcv.utils import print_log
 
 
 class WsodDistributedSampler(_DistributedSampler):
@@ -21,11 +22,15 @@ class WsodDistributedSampler(_DistributedSampler):
 
         # add extra samples to make it evenly divisible
         # in case that indices is shorter than half of total_size
+        # print_log('total_size')
+        # print_log(self.total_size)
         indices = (indices *
                    math.ceil(self.total_size / len(indices)))[:self.total_size]
         assert len(indices) == self.total_size
 
         # subsample
+        # print_log('num_replicas')
+        # print_log(self.num_replicas)
         indices = indices[self.rank:self.total_size:self.num_replicas]
         assert len(indices) == self.num_samples
 

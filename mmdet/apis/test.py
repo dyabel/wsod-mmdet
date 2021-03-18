@@ -11,6 +11,8 @@ from mmcv.image import tensor2imgs
 from mmcv.runner import get_dist_info
 
 from mmdet.core import encode_mask_results
+from mmcv.utils import print_log
+import time
 
 
 def single_gpu_test(model,
@@ -90,9 +92,13 @@ def multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
     results = []
     dataset = data_loader.dataset
     rank, world_size = get_dist_info()
+    # time_start = time.time()
+    # print('rank %d test'%rank)
+    print('world size',world_size)
     if rank == 0:
         prog_bar = mmcv.ProgressBar(len(dataset))
     time.sleep(2)  # This line can prevent deadlock problem in some cases.
+    # print('sleep over')
     for i, data in enumerate(data_loader):
         with torch.no_grad():
             result = model(return_loss=False, rescale=True, **data)
@@ -109,9 +115,14 @@ def multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
 
     # collect results from all ranks
     if gpu_collect:
+        # print('collect by gpu')
         results = collect_results_gpu(results, len(dataset))
     else:
+        # print('collect by cpu')
         results = collect_results_cpu(results, len(dataset), tmpdir)
+    time_end = time.time()
+    # print('time elapsed')
+    # print('%.f'%(time_end-time_start))
     return results
 
 
@@ -137,9 +148,11 @@ def collect_results_cpu(result_part, size, tmpdir=None):
         mmcv.mkdir_or_exist(tmpdir)
     # dump the part result to the dir
     mmcv.dump(result_part, osp.join(tmpdir, f'part_{rank}.pkl'))
+    print_log('rank %d dumped'%rank)
     dist.barrier()
     # collect all parts
     if rank != 0:
+        print('rank',rank)
         return None
     else:
         # load results of all parts from tmp dir
