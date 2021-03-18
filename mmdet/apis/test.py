@@ -91,10 +91,11 @@ def multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
     model.eval()
     results = []
     dataset = data_loader.dataset
+    # print(dataset)
     rank, world_size = get_dist_info()
     # time_start = time.time()
-    # print('rank %d test'%rank)
-    print('world size',world_size)
+    print('rank %d test'%rank)
+    # print('world size',world_size)
     if rank == 0:
         prog_bar = mmcv.ProgressBar(len(dataset))
     time.sleep(2)  # This line can prevent deadlock problem in some cases.
@@ -120,7 +121,7 @@ def multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
     else:
         # print('collect by cpu')
         results = collect_results_cpu(results, len(dataset), tmpdir)
-    time_end = time.time()
+    # time_end = time.time()
     # print('time elapsed')
     # print('%.f'%(time_end-time_start))
     return results
@@ -149,12 +150,14 @@ def collect_results_cpu(result_part, size, tmpdir=None):
     # dump the part result to the dir
     mmcv.dump(result_part, osp.join(tmpdir, f'part_{rank}.pkl'))
     print_log('rank %d dumped'%rank)
+    time.sleep(2)
     dist.barrier()
     # collect all parts
     if rank != 0:
-        print('rank',rank)
         return None
     else:
+        # time.sleep(4)
+        # dist.barrier()
         # load results of all parts from tmp dir
         part_list = []
         for i in range(world_size):
