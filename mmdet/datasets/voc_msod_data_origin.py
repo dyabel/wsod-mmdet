@@ -80,67 +80,14 @@ class VocMsodDataset(CustomDataset):
                     else:
                         self.cat_weak_ids[i].append(j)
                         self.id_labelattr[j] = False
+            # print(self.id_labelattr)
             assert len(self.id_labelattr)==len(self.img_ids)
             print('allocating completed')
-            # random_indices = torch.randperm(len(self.img_ids))
-            # random_indices = torch.cat((random_indices,random_indices))
-            indices = []
-            for i in self.cat_strong_ids.keys():
-                num_strong = len(self.cat_strong_ids[i])
-                if num_strong == 0:
-                    continue
-                for j in range(len(self.cat_weak_ids[i])):
-                    indices.append([self.id_idx[self.cat_strong_ids[i][j % num_strong]],
-                                    self.id_idx[self.cat_weak_ids[i][j]]])
-            indices = np.concatenate(indices)
-            indices = indices.astype(np.int64).tolist()
-            for i in range(len(self.img_ids)):
-                if i not in indices:
-                    indices.append(i)
-                    print('append',i)
-            random_indices = torch.tensor(indices)
-            random_indices = random_indices[0:4000]
-
-
-            # random_indice = torch.randperm(len(self.img_ids))
-            # random_indice = []
-            # for i in range(len(self.img_ids)):
-            #     random_indice.append([1,i])
-            # np.random.shuffle(random_indice)
-            # random_indices = np.concatenate(random_indice)
-
-            # random_indice = torch.cat((random_indice,torch.randperm(1860)))
-            # random_indices=torch.unique(random_indices)
-            # assert  (np.unique(random_indices.numpy()) == np.unique(random_indice.numpy())).all()
-            # random_indices = random_indice
-            # print(len(self.img_ids))
-            # print(len(random_indices))
             self.data_infos = [self.data_infos[i] for i in valid_inds]
-            self.data_infos = [self.data_infos[i] for i in random_indices]
             if self.proposals is not None:
                 self.proposals = [self.proposals[i] for i in valid_inds]
-                self.proposals = [self.proposals[i] for i in random_indices]
-            self.img_ids = [self.img_ids[i] for i in random_indices]
-            # assert len(self.indices) == len(self.img_ids)
-            for i,j in enumerate(self.img_ids):
-                assert j == self.data_infos[i]['id']
-            # print_log('number of img_ids')
-            # print_log(len(self.img_ids))
-
             # set group flag for the sampler
             self._set_group_flag()
-            # print(len(self),len(self.data_infos))
-
-    def _set_group_flag(self):
-        self.flag = np.zeros(len(self), dtype=np.uint8)
-        half_len = len(self) // 2
-        if half_len&1 != 0:
-            half_len += 1
-        for i in range(half_len):
-            self.flag[i] = 1
-
-
-
 
 
     def load_annotations(self, ann_file):
@@ -181,13 +128,6 @@ class VocMsodDataset(CustomDataset):
         ann_info = self.coco.load_anns(ann_ids)
         return self._parse_ann_info(self.data_infos[idx], ann_info)
 
-    def __len__(self):
-        """Total number of samples of data."""
-        # if self.test_mode:
-        # print('length returned')
-        # print(len(self.data_infos))
-        return len(self.data_infos)
-
     def get_cat_ids(self, idx):
         """Get COCO category ids by index.
 
@@ -202,10 +142,6 @@ class VocMsodDataset(CustomDataset):
         ann_ids = self.coco.get_ann_ids(img_ids=[img_id])
         ann_info = self.coco.load_anns(ann_ids)
         return [ann['category_id'] for ann in ann_info]
-
-    def match_imgs(self):
-        pass
-        # return indices
 
     def _filter_imgs(self, min_size=32):
         """Filter images too small or without ground truths."""
