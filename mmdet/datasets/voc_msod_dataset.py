@@ -66,7 +66,7 @@ class VocMsodDataset(CustomDataset):
                 self.id_labelattr[i] = -1
             for i in self.coco.catToImgs.keys():
                 self.coco.catToImgs[i] = list(set(self.coco.catToImgs[i]))
-                cat_strong_image_ids = random.sample(self.coco.catToImgs[i],len(self.coco.catToImgs[i])//weak_ann_frac+len(self.coco.catToImgs[i])%weak_ann_frac)
+                cat_strong_image_ids =self.coco.catToImgs[i][0:len(self.coco.catToImgs[i])//weak_ann_frac+len(self.coco.catToImgs[i])%weak_ann_frac]
                 self.cat_weak_ids[i] = []
                 self.cat_strong_ids[i] = []
                 for j in self.coco.catToImgs[i]:
@@ -99,7 +99,7 @@ class VocMsodDataset(CustomDataset):
                     indices.append(i)
                     print('append',i)
             random_indices = torch.tensor(indices)
-            random_indices = random_indices[0:4200]
+            # random_indices = random_indices[0:4200]
 
 
             # random_indice = torch.randperm(len(self.img_ids))
