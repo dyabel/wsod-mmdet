@@ -66,7 +66,7 @@ class VocMsodDataset(CustomDataset):
                 self.id_labelattr[i] = -1
             for i in self.coco.catToImgs.keys():
                 self.coco.catToImgs[i] = list(set(self.coco.catToImgs[i]))
-                cat_strong_image_ids =self.coco.catToImgs[i][0:len(self.coco.catToImgs[i])//weak_ann_frac+len(self.coco.catToImgs[i])%weak_ann_frac]
+                cat_strong_image_ids =self.coco.catToImgs[i][0:(len(self.coco.catToImgs[i])//weak_ann_frac+len(self.coco.catToImgs[i])%weak_ann_frac)]
                 self.cat_weak_ids[i] = []
                 self.cat_strong_ids[i] = []
                 for j in self.coco.catToImgs[i]:
@@ -82,8 +82,6 @@ class VocMsodDataset(CustomDataset):
                         self.id_labelattr[j] = False
             assert len(self.id_labelattr)==len(self.img_ids)
             print('allocating completed')
-            # random_indices = torch.randperm(len(self.img_ids))
-            # random_indices = torch.cat((random_indices,random_indices))
             indices = []
             for i in self.cat_strong_ids.keys():
                 num_strong = len(self.cat_strong_ids[i])

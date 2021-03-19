@@ -16,6 +16,7 @@ from .shared_heads import ResLayer
 from .sparse_roi_head import SparseRoIHead
 from .standard_roi_head import StandardRoIHead
 from .trident_roi_head import TridentRoIHead
+# from .roi_head_branch1_copy import RoIHeadBranch1
 from .roi_head_branch1 import RoIHeadBranch1
 from .roi_head_branch2 import RoIHeadBranch2
 from .oicr_roi_head import OICRRoIHead

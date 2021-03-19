@@ -3,7 +3,7 @@ import torch
 from mmcv.ops.nms import batched_nms
 from mmdet.core.bbox.iou_calculators import bbox_overlaps
 import torch.nn.functional as F
-
+@torch.no_grad()
 def bbox_select_per_class(multi_bboxes,
                    multi_scores,
                    img_level_label,
@@ -29,8 +29,7 @@ def bbox_select_per_class(multi_bboxes,
     """
     # multi_scores = torch.sigmoid(multi_scores)
     num_classes = multi_scores.size(1) - 1
-    with torch.no_grad():
-        multi_scores = torch.softmax(multi_scores,dim=1)
+    multi_scores = torch.softmax(multi_scores,dim=1)
     # exclude background category
     if multi_bboxes.shape[1] > 4:
         bboxes = multi_bboxes.view(multi_scores.size(0), -1, 4)
