@@ -37,7 +37,7 @@ model = dict(
                 type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
             loss_cls_weak=dict(
                 type='MyCrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
-            loss_bbox=dict(type='L1Loss', loss_weight=1.0))),
+            loss_bbox=dict(type='SmoothL1Loss', loss_weight=1.0))),
     roi_head_branch2=dict(
         type='RoIHeadBranch2',
         bbox_roi_extractor=dict(
@@ -60,7 +60,7 @@ model = dict(
                 type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
             loss_cls_weak=dict(
                 type='MyCrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
-            loss_bbox=dict(type='L1Loss', loss_weight=1.0))),
+            loss_bbox=dict(type='SmoothL1Loss', loss_weight=1.0))),
     # model training and testing settings
     train_cfg=dict(
         rcnn=dict(

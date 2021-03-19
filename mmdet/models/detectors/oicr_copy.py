@@ -18,7 +18,8 @@ class OICR(BaseDetector):
                  backbone,
                  neck=None,
                  rpn_head=None,
-                 roi_head=None,
+                 roi_head_branch1=None,
+                 roi_head_branch2=None,
                  train_cfg=None,
                  test_cfg=None,
                  pretrained=None):
@@ -34,13 +35,21 @@ class OICR(BaseDetector):
             rpn_head_.update(train_cfg=rpn_train_cfg, test_cfg=test_cfg.rpn)
             self.rpn_head = build_head(rpn_head_)
 
-        if roi_head is not None:
+        if roi_head_branch1 is not None:
             # update train and test cfg here for now
             # TODO: refactor assigner & sampler
             rcnn_train_cfg = train_cfg.rcnn if train_cfg is not None else None
-            roi_head.update(train_cfg=rcnn_train_cfg)
-            roi_head.update(test_cfg=test_cfg.rcnn)
-            self.roi_head = build_head(roi_head)
+            roi_head_branch1.update(train_cfg=rcnn_train_cfg)
+            roi_head_branch1.update(test_cfg=test_cfg.rcnn)
+            self.roi_head_branch1 = build_head(roi_head_branch1)
+
+        if roi_head_branch2 is not None:
+            # update train and test cfg here for now
+            # TODO: refactor assigner & sampler
+            rcnn_train_cfg = train_cfg.rcnn if train_cfg is not None else None
+            roi_head_branch2.update(train_cfg=rcnn_train_cfg)
+            roi_head_branch2.update(test_cfg=test_cfg.rcnn)
+            self.roi_head_branch2 = build_head(roi_head_branch2)
 
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
@@ -55,7 +64,12 @@ class OICR(BaseDetector):
     @property
     def with_roi_head(self):
         """bool: whether the detector has a RoI head"""
-        return hasattr(self, 'roi_head') and self.roi_head is not None
+        return hasattr(self, 'roi_head_branch2') and self.roi_head_branch2 is not None
+
+    def with_bbox(self):
+        """bool: whether the detector has a bbox head"""
+        return ((hasattr(self, 'roi_head_branch2') and self.roi_head_branch2.with_bbox)
+                or (hasattr(self, 'bbox_head') and self.bbox_head is not None))
 
     def init_weights(self, pretrained=None):
         """Initialize the weights in detector.
@@ -75,7 +89,8 @@ class OICR(BaseDetector):
         if self.with_rpn:
             self.rpn_head.init_weights()
         if self.with_roi_head:
-            self.roi_head.init_weights(pretrained)
+            self.roi_head_branch1.init_weights(pretrained)
+            self.roi_head_branch2.init_weights(pretrained)
 
     def extract_feat(self, img):
         """Directly extract features from the backbone+neck."""
@@ -107,7 +122,7 @@ class OICR(BaseDetector):
                       img_metas,
                       gt_bboxes,
                       gt_labels,
-                      strong_label=True,
+                      strong_label,
                       gt_bboxes_ignore=None,
                       gt_masks=None,
                       proposals=None,
@@ -140,26 +155,21 @@ class OICR(BaseDetector):
         Returns:
             dict[str, Tensor]: a dictionary of loss components
         """
+        # print('#'*100)
+        # print(gt_labels)
+        # print(strong_label)
         x = self.extract_feat(img)
-        # print('#'*20)
-        # print(strong_label)
-        # print(img.size())
-        # print(len(img_metas))
-        # print('#'*40)
-        # print(img_metas)
-        # print(**kwargs)
         losses = dict()
-        # print(strong_label)
+        x_strong = tuple([torch.unsqueeze(xx[0],0) for xx in x])
+        x_weak = tuple([torch.unsqueeze(xx[1],0) for xx in x])
 
         # RPN forward and loss
         if self.with_rpn:
             proposal_cfg = self.train_cfg.get('rpn_proposal',
                                               self.test_cfg.rpn)
-            # rpn_losses, proposal_list = self.rpn_head.forward_train(
-            if strong_label:
-            # if strong_label==True:
+            if strong_label.any():
                 rpn_losses, proposal_list = self.rpn_head.forward_train_strong(
-                    x,
+                    x_strong,
                     img_metas,
                     gt_bboxes,
                     gt_labels=None,
@@ -167,24 +177,73 @@ class OICR(BaseDetector):
                     proposal_cfg=proposal_cfg)
                 losses.update(rpn_losses)
             else:
-                proposal_list = self.rpn_head.forward_train_weak(
-                    x,
+                proposal_list_weak = self.rpn_head.forward_train_weak(
+                    x_weak,
                     img_metas,
                     gt_labels=None,
                     gt_bboxes_ignore=gt_bboxes_ignore,
                     proposal_cfg=proposal_cfg)
+
+
         else:
             proposal_list = proposals
-        # print(len(proposal_list),proposal_list[0].size(),proposal_list[1].size())
-        # print(proposal_list)
+        roi_losses_branch1_strong_first_pass,oam_bboxes,oam_labels  = self.roi_head_branch1.forward_train_strong(x_strong, [img_metas[0]], [proposal_list[0]],
+                                                                                       [gt_bboxes[0]], [gt_labels[0]],
+                                                                                       gt_bboxes_ignore, gt_masks,
+                                                                                       **kwargs)
+        roi_losses_branch1_strong_second_pass,oam_bboxes,oam_labels  = self.roi_head_branch1.forward_train_strong(x_strong, [img_metas[0]], oam_bboxes,
+                                                                                           [gt_bboxes[0]], [gt_labels[0]],
+                                                                                           gt_bboxes_ignore, gt_masks,
+                                                                                           **kwargs)
+        roi_losses_branch1_weak_first_pass,oam_bboxes,oam_labels = self.roi_head_branch1.forward_train_weak(x_weak, [img_metas[1]], [proposal_list[1]],
+                                                                                                     [gt_bboxes[1]], [gt_labels[1]],
+                                                                                                     gt_bboxes_ignore, gt_masks,
+                                                                                                     **kwargs)
+        # roi_losses_branch1_weak_second_pass,oam_bboxes,oam_labels = self.roi_head_branch1.forward_train_weak(x_weak, [img_metas[1]], oam_bboxes,
+        #                                                                                                     [gt_bboxes[1]], [gt_labels[1]],
+        #                                                                                                     gt_bboxes_ignore, gt_masks,
+        #                                                                                                     **kwargs)
 
-        roi_losses = self.roi_head.forward_train(x, img_metas, proposal_list,
-                                                 gt_bboxes, gt_labels,
-                                                 gt_bboxes_ignore, gt_masks,
-                                                 **kwargs)
-        losses.update(roi_losses)
-        # print(losses)
 
+
+        roi_losses_branch2_strong = self.roi_head_branch2.forward_train_strong(x_strong, [img_metas[0]], [proposal_list[0]],
+                                                            [gt_bboxes[0]], [gt_labels[0]],
+                                                            gt_bboxes_ignore, gt_masks,
+                                                            **kwargs)
+
+        # OAM_Confidence = self.roi_head_branch1.OAM_Confidence(x_weak,[img_metas[1]],[proposal_list[1]],
+        #                                                       [gt_bboxes[1]],[gt_labels[1]],gt_bboxes_ignore=gt_bboxes_ignore,
+        #                                                       gt_masks=gt_masks
+        #                                                       )
+        # print(OAM_Confidence)
+        roi_losses_branch2_weak = self.roi_head_branch2.forward_train_weak(x_weak, [img_metas[1]], [proposal_list[1]],
+                                                                           oam_bboxes, oam_labels,
+                                                                           gt_bboxes_ignore, gt_masks,
+                                                                           **kwargs)
+        # roi_losses_branch2_weak['loss_cls_weak'] *= OAM_Confidence
+        # roi_losses_branch1_strong = {}
+        # for key in roi_losses_branch1_strong_first_pass.keys():
+        #     roi_losses_branch1_strong[key] = roi_losses_branch1_strong_first_pass[key] + roi_losses_branch1_strong_second_pass[key]
+        #     if 'acc' in key:
+        #         roi_losses_branch1_strong[key] /=2
+
+        # roi_losses_branch1_weak = {}
+        # for key in roi_losses_branch1_weak_first_pass.keys():
+        #     roi_losses_branch2_weak[key] = roi_losses_branch1_weak_first_pass[key] + roi_losses_branch1_weak_second_pass[key]
+        #     if 'acc' in key:
+        #         roi_losses_branch1_strong[key] /=2
+
+
+
+        losses.update(roi_losses_branch1_weak_first_pass)
+        losses.update(roi_losses_branch1_strong_first_pass)
+        # print('#'*100)
+        # print(gt_labels[1],oam_labels)
+        # if oam_labels[0].size() != torch.Size([0]):
+        #     print('oam_generation',oam_labels[0].size())
+            # raise Exception
+        losses.update(roi_losses_branch2_weak)
+        losses.update(roi_losses_branch2_strong)
         return losses
 
     async def async_simple_test(self,
@@ -216,7 +275,7 @@ class OICR(BaseDetector):
         else:
             proposal_list = proposals
 
-        return self.roi_head.simple_test(
+        return self.roi_head_branch2.simple_test(
             x, proposal_list, img_metas, rescale=rescale)
 
     def aug_test(self, imgs, img_metas, rescale=False):
@@ -229,3 +288,33 @@ class OICR(BaseDetector):
         proposal_list = self.rpn_head.aug_test_rpn(x, img_metas)
         return self.roi_head.aug_test(
             x, proposal_list, img_metas, rescale=rescale)
+
+    def forward_test(self, imgs, img_metas, proposals, **kwargs):
+        """
+        Args:
+            imgs (List[Tensor]): the outer list indicates test-time
+                augmentations and inner Tensor should have a shape NxCxHxW,
+                which contains all images in the batch.
+            img_metas (List[List[dict]]): the outer list indicates test-time
+                augs (multiscale, flip, etc.) and the inner list indicates
+                images in a batch.
+            proposals (List[List[Tensor]]): the outer list indicates test-time
+                augs (multiscale, flip, etc.) and the inner list indicates
+                images in a batch. The Tensor should have a shape Px4, where
+                P is the number of proposals.
+        """
+        for var, name in [(imgs, 'imgs'), (img_metas, 'img_metas')]:
+            if not isinstance(var, list):
+                raise TypeError(f'{name} must be a list, but got {type(var)}')
+
+        num_augs = len(imgs)
+        if num_augs != len(img_metas):
+            raise ValueError(f'num of augmentations ({len(imgs)}) '
+                             f'!= num of image meta ({len(img_metas)})')
+
+        if num_augs == 1:
+            return self.simple_test(imgs[0], img_metas[0], proposals[0],
+                                    **kwargs)
+        else:
+            # TODO: support test-time augmentation
+            assert NotImplementedError
