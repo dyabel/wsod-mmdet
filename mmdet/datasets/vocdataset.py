@@ -14,6 +14,8 @@ from terminaltables import AsciiTable
 from mmdet.core import eval_recalls
 from .builder import DATASETS
 from .custom import CustomDataset
+import random
+import torch
 
 try:
     import pycocotools
@@ -29,11 +31,38 @@ except AssertionError:
 @DATASETS.register_module()
 class VocDataset(CustomDataset):
 
-
-    CLASSES = ('aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow',
-               'diningtable', 'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa',
-               'trian', 'tvmonitor'
+    CLASSES = ('aeroplane','bicycle','bird','boat','bottle','bus','car','cat','chair','cow',
+               'diningtable','dog','horse','motorbike','person','pottedplant','sheep','sofa',
+               'trian','tvmonitor'
                )
+
+    def __init__(self,
+                 ann_file,
+                 pipeline,
+                 classes=None,
+                 data_root=None,
+                 img_prefix='',
+                 seg_prefix=None,
+                 proposal_file=None,
+                 weak_ann_frac=10,
+                 test_mode=False,
+                 filter_empty_gt=True):
+        super(VocDataset,self).__init__(ann_file,pipeline,classes=classes,data_root=data_root,
+                                         img_prefix=img_prefix,seg_prefix=seg_prefix,proposal_file=proposal_file,
+                                         test_mode=test_mode,filter_empty_gt=filter_empty_gt)
+        # filter images too small and containing no annotations
+        if not test_mode:
+            valid_inds = self._filter_imgs()
+            self.data_infos = [self.data_infos[i] for i in valid_inds]
+            if self.proposals is not None:
+                self.proposals = [self.proposals[i] for i in valid_inds]
+            # set group flag for the sampler
+            self._set_group_flag()
+
+
+
+
+
     def load_annotations(self, ann_file):
         """Load annotation from COCO style annotation file.
 
@@ -43,11 +72,13 @@ class VocDataset(CustomDataset):
         Returns:
             list[dict]: Annotation info from COCO api.
         """
-
         self.coco = COCO(ann_file)
+
         self.cat_ids = self.coco.get_cat_ids(cat_names=self.CLASSES)
         self.cat2label = {cat_id: i for i, cat_id in enumerate(self.cat_ids)}
         self.img_ids = self.coco.get_img_ids()
+
+
         data_infos = []
         for i in self.img_ids:
             info = self.coco.load_imgs([i])[0]
@@ -68,8 +99,11 @@ class VocDataset(CustomDataset):
         img_id = self.data_infos[idx]['id']
         ann_ids = self.coco.get_ann_ids(img_ids=[img_id])
         ann_info = self.coco.load_anns(ann_ids)
-        # print(ann_info)
         return self._parse_ann_info(self.data_infos[idx], ann_info)
+
+    def __len__(self):
+        """Total number of samples of data."""
+        return len(self.data_infos)
 
     def get_cat_ids(self, idx):
         """Get COCO category ids by index.
@@ -86,6 +120,10 @@ class VocDataset(CustomDataset):
         ann_info = self.coco.load_anns(ann_ids)
         return [ann['category_id'] for ann in ann_info]
 
+    def match_imgs(self):
+        pass
+        # return indices
+
     def _filter_imgs(self, min_size=32):
         """Filter images too small or without ground truths."""
         valid_inds = []
@@ -100,6 +138,7 @@ class VocDataset(CustomDataset):
         ids_in_cat &= ids_with_ann
 
         valid_img_ids = []
+
         for i, img_info in enumerate(self.data_infos):
             img_id = self.img_ids[i]
             if self.filter_empty_gt and img_id not in ids_in_cat:
@@ -166,8 +205,6 @@ class VocDataset(CustomDataset):
             bboxes_ignore=gt_bboxes_ignore,
             masks=gt_masks_ann,
             seg_map=seg_map)
-        # print('#'*40)
-        # print(ann)
 
         return ann
 
@@ -352,6 +389,45 @@ class VocDataset(CustomDataset):
             tmp_dir = None
         result_files = self.results2json(results, jsonfile_prefix)
         return result_files, tmp_dir
+
+    def __getitem__(self, idx):
+        """Get training/test data after pipeline.
+
+        Args:
+            idx (int): Index of data.
+
+        Returns:
+            dict: Training/test data (with annotation if `test_mode` is set \
+                True).
+        """
+
+        if self.test_mode:
+            return self.prepare_test_img(idx)
+        while True:
+            data = self.prepare_train_img(idx)
+            if data is None:
+                idx = self._rand_another(idx)
+                continue
+            return data
+
+    def prepare_train_img(self, idx):
+        """Get training data and annotations after pipeline.
+
+        Args:
+            idx (int): Index of data.
+
+        Returns:
+            dict: Training data and annotation after pipeline with new keys \
+                introduced by pipeline.
+        """
+        img_info = self.data_infos[idx]
+        ann_info = self.get_ann_info(idx)
+        results = dict(img_info=img_info, ann_info=ann_info)
+        if self.proposals is not None:
+            results['proposals'] = self.proposals[idx]
+        self.pre_pipeline(results)
+        results = self.pipeline(results)
+        return results
 
     def evaluate(self,
                  results,

@@ -43,6 +43,28 @@ class CocoDataset(CustomDataset):
                'mouse', 'remote', 'keyboard', 'cell phone', 'microwave',
                'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock',
                'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush')
+    def __init__(self,
+                 ann_file,
+                 pipeline,
+                 classes=None,
+                 data_root=None,
+                 img_prefix='',
+                 seg_prefix=None,
+                 proposal_file=None,
+                 weak_ann_frac=10,
+                 test_mode=False,
+                 filter_empty_gt=True):
+        super(CocoDataset,self).__init__(ann_file,pipeline,classes=classes,data_root=data_root,
+                                         img_prefix=img_prefix,seg_prefix=seg_prefix,proposal_file=proposal_file,
+                                         test_mode=test_mode,filter_empty_gt=filter_empty_gt)
+        # filter images too small and containing no annotations
+        if not test_mode:
+            valid_inds = self._filter_imgs()
+            self.data_infos = [self.data_infos[i] for i in valid_inds]
+            if self.proposals is not None:
+                self.proposals = [self.proposals[i] for i in valid_inds]
+            # set group flag for the sampler
+            self._set_group_flag()
 
     def load_annotations(self, ann_file):
         """Load annotation from COCO style annotation file.

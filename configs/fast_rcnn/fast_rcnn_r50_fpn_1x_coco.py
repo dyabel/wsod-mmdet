@@ -4,7 +4,7 @@ _base_ = [
     '../_base_/schedules/schedule_msod.py', '../_base_/default_runtime.py'
 ]
 dataset_type = 'CocoDataset'
-data_root = 'data/coco/'
+data_root = '../data/coco/'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
@@ -42,11 +42,11 @@ data = dict(
     samples_per_gpu=2,
     workers_per_gpu=2,
     train=dict(
-        proposal_file=data_root + 'proposals/rpn_r50_fpn_1x_train2017.pkl',
+        proposal_file=data_root + 'proposals/rpn_r101_fpn_1x_train2017.pkl',
         pipeline=train_pipeline),
     val=dict(
-        proposal_file=data_root + 'proposals/rpn_r50_fpn_1x_val2017.pkl',
+        proposal_file=data_root + 'proposals/rpn_r101_fpn_1x_val2017.pkl',
         pipeline=test_pipeline),
     test=dict(
-        proposal_file=data_root + 'proposals/rpn_r50_fpn_1x_val2017.pkl',
+        proposal_file=data_root + 'proposals/rpn_r101_fpn_1x_val2017.pkl',
         pipeline=test_pipeline))

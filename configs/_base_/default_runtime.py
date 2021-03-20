@@ -10,5 +10,6 @@ log_config = dict(
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
 load_from = None
-resume_from = None
+# resume_from = None
+resume_from = '/data/dy/work_dirs/fast_rcnn_coco/epoch_1.pth'
 workflow = [('train', 1)]

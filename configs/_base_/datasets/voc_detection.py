@@ -32,20 +32,26 @@ data = dict(
     workers_per_gpu=2,
     train=dict(
         type=dataset_type,
-        ann_file=[data_root + 'VOC2007/trainval.json',
-                  data_root + 'VOC2012/train.json'
-                  ],
-        img_prefix=[data_root + 'VOC2007/JPEGImages',data_root + 'VOC2012/JPEGImages'],
+        ann_file=data_root + 'train.json',
+        # ann_file=[data_root + 'VOC2007/trainval.json',
+        #           data_root + 'VOC2012/train.json'
+        #           ],
+        # img_prefix=[data_root + 'VOC2007/JPEGImages',data_root + 'VOC2012/JPEGImages'],
+        img_prefix=data_root + 'JPEGImages',
         pipeline=train_pipeline),
     val=dict(
         type=dataset_type,
-        ann_file=[data_root + 'VOC2007/test.json',
-                  data_root + 'VOC2012/val.json'],
-        img_prefix=[data_root + 'VOC2007/JPEGImages',data_root + 'VOC2012/JPEGImages'],
+        ann_file=data_root + 'val.json',
+        # ann_file=[data_root + 'VOC2007/test.json',
+        #           data_root + 'VOC2012/val.json'],
+        # img_prefix=[data_root + 'VOC2007/JPEGImages',data_root + 'VOC2012/JPEGImages'],
+        img_prefix=data_root + 'JPEGImages',
         pipeline=test_pipeline),
     test=dict(
         type=dataset_type,
-        ann_file=[data_root + 'VOC2007/test.json',
-                  data_root + 'VOC2012/val.json'],
-        img_prefix=[data_root + 'VOC2007/JPEGImages',data_root + 'VOC2012/JPEGImages'],
+        ann_file=data_root + 'val.json',
+        # ann_file=[data_root + 'VOC2007/test.json',
+        #           data_root + 'VOC2012/val.json'],
+        # img_prefix=[data_root + 'VOC2007/JPEGImages',data_root + 'VOC2012/JPEGImages'],
+        img_prefix=data_root + 'JPEGImages',
         pipeline=test_pipeline))

@@ -111,8 +111,6 @@ def build_dataloader(dataset,
             sampler = WsodDistributedGroupSampler(dataset, samples_per_gpu,
                                               world_size, rank)
         else:
-            # sampler = WsodDistributedGroupSampler(dataset, samples_per_gpu,
-            #                                       world_size, rank)
             sampler = WsodDistributedSampler(
                 dataset, world_size, rank, shuffle=False)
         batch_size = samples_per_gpu
