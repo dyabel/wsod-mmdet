@@ -55,7 +55,7 @@ with open('../data/VOCdevkit/train.txt','r') as f:
             proposal.append(1)
             proposals.append(proposal)
         proposals_list.append(proposals)
-mmcv.dump(proposals_list,'../test.pkl')
+mmcv.dump(proposals_list,'../ss_train.pkl')
 
 
 
