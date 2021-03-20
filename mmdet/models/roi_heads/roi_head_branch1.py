@@ -59,7 +59,6 @@ class RoIHeadBranch1(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         # bbox head
         outs = ()
         rois = bbox2roi([proposals])
-        # print(rois[0])
         if self.with_bbox:
             bbox_results = self._bbox_forward(x, rois)
             outs = outs + (bbox_results['cls_score'],
