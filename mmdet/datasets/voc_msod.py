@@ -9,7 +9,7 @@ import numpy as np
 
 
 @DATASETS.register_module()
-class VOCDataset(XMLDataset):
+class VocMsod(XMLDataset):
 
     CLASSES = ('aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car',
                'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse',
@@ -17,7 +17,7 @@ class VOCDataset(XMLDataset):
                'tvmonitor')
 
     def __init__(self, **kwargs):
-        super(VOCDataset, self).__init__(**kwargs)
+        super(VocMsod, self).__init__(**kwargs)
         if 'VOC2007' in self.img_prefix:
             self.year = 2007
         elif 'VOC2012' in self.img_prefix:
