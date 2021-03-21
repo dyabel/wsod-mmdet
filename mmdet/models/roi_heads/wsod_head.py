@@ -8,8 +8,8 @@ from mmdet.core import multiclass_nms,bbox_select_per_class
 from mmdet.core.utils import convert_label
 from mmdet.core.evaluation import bbox_overlaps
 from mmdet.models.losses import accuracy
-
-
+from mmdet.core import (bbox2roi, bbox_mapping, merge_aug_bboxes,
+                        merge_aug_masks, multiclass_nms)
 @HEADS.register_module()
 class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
     """Simplest base roi head including one bbox head and one mask head."""
@@ -60,8 +60,15 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         # bbox head
         outs = ()
         rois = bbox2roi([proposals])
+        bbox_feats = self.bbox_roi_extractor(
+            x[:self.bbox_roi_extractor.num_inputs], rois)
+        bbox_feats = self.bbox_head.double_fc_forward(bbox_feats)
+
+        if self.with_shared_head:
+            bbox_feats = self.shared_head(bbox_feats)
+
         if self.with_bbox:
-            bbox_results = self._bbox_forward(x, rois)
+            bbox_results = self._bbox_forward_strong_branch2(bbox_feats)
             outs = outs + (bbox_results['cls_score'],
                            bbox_results['bbox_pred'])
         # mask head
@@ -580,6 +587,61 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                 x, img_metas, det_bboxes, det_labels, rescale=rescale)
             return list(zip(bbox_results, segm_results))
 
+    def simple_test_bboxes(self,
+                           x,
+                           img_metas,
+                           proposals,
+                           rcnn_test_cfg,
+                           rescale=False):
+        """Test only det bboxes without augmentation."""
+        rois = bbox2roi(proposals)
+        bbox_feats = self.bbox_roi_extractor(
+            x[:self.bbox_roi_extractor.num_inputs], rois)
+        bbox_feats = self.bbox_head.double_fc_forward(bbox_feats)
+
+
+        if self.with_shared_head:
+            bbox_feats = self.shared_head(bbox_feats)
+
+        bbox_results = self._bbox_forward_strong_branch2(bbox_feats)
+
+        img_shapes = tuple(meta['img_shape'] for meta in img_metas)
+        scale_factors = tuple(meta['scale_factor'] for meta in img_metas)
+
+        # split batch bbox prediction back to each image
+        cls_score = bbox_results['cls_score']
+        bbox_pred = bbox_results['bbox_pred']
+        num_proposals_per_img = tuple(len(p) for p in proposals)
+        rois = rois.split(num_proposals_per_img, 0)
+        cls_score = cls_score.split(num_proposals_per_img, 0)
+
+        # some detector with_reg is False, bbox_pred will be None
+        if bbox_pred is not None:
+            # the bbox prediction of some detectors like SABL is not Tensor
+            if isinstance(bbox_pred, torch.Tensor):
+                bbox_pred = bbox_pred.split(num_proposals_per_img, 0)
+            else:
+                bbox_pred = self.bbox_head.bbox_pred_split(
+                    bbox_pred, num_proposals_per_img)
+        else:
+            bbox_pred = (None, ) * len(proposals)
+
+        # apply bbox post-processing to each image individually
+        det_bboxes = []
+        det_labels = []
+        for i in range(len(proposals)):
+            det_bbox, det_label = self.bbox_head.get_bboxes(
+                rois[i],
+                cls_score[i],
+                bbox_pred[i],
+                img_shapes[i],
+                scale_factors[i],
+                rescale=rescale,
+                cfg=rcnn_test_cfg)
+            det_bboxes.append(det_bbox)
+            det_labels.append(det_label)
+        return det_bboxes, det_labels
+
     def aug_test(self, x, proposal_list, img_metas, rescale=False):
         """Test with augmentations.
 
@@ -606,3 +668,45 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             return [(bbox_results, segm_results)]
         else:
             return [bbox_results]
+
+
+    def aug_test_bboxes(self, feats, img_metas, proposal_list, rcnn_test_cfg):
+        """Test det bboxes with test time augmentation."""
+        aug_bboxes = []
+        aug_scores = []
+        for x, img_meta in zip(feats, img_metas):
+            # only one image in the batch
+            img_shape = img_meta[0]['img_shape']
+            scale_factor = img_meta[0]['scale_factor']
+            flip = img_meta[0]['flip']
+            flip_direction = img_meta[0]['flip_direction']
+            # TODO more flexible
+            proposals = bbox_mapping(proposal_list[0][:, :4], img_shape,
+                                     scale_factor, flip, flip_direction)
+            rois = bbox2roi([proposals])
+            bbox_feats = self.bbox_roi_extractor(
+                x[:self.bbox_roi_extractor.num_inputs], rois)
+            bbox_feats = self.bbox_head.double_fc_forward(bbox_feats)
+
+            if self.with_shared_head:
+                bbox_feats = self.shared_head(bbox_feats)
+
+            bbox_results = self._bbox_forward_strong_branch2(bbox_feats)
+            bboxes, scores = self.bbox_head.get_bboxes(
+                rois,
+                bbox_results['cls_score'],
+                bbox_results['bbox_pred'],
+                img_shape,
+                scale_factor,
+                rescale=False,
+                cfg=None)
+            aug_bboxes.append(bboxes)
+            aug_scores.append(scores)
+        # after merging, bboxes will be rescaled to the original image size
+        merged_bboxes, merged_scores = merge_aug_bboxes(
+            aug_bboxes, aug_scores, img_metas, rcnn_test_cfg)
+        det_bboxes, det_labels = multiclass_nms(merged_bboxes, merged_scores,
+                                                rcnn_test_cfg.score_thr,
+                                                rcnn_test_cfg.nms,
+                                                rcnn_test_cfg.max_per_img)
+        return det_bboxes, det_labels
