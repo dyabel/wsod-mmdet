@@ -18,8 +18,7 @@ class WSOD(BaseDetector):
                  backbone,
                  neck=None,
                  rpn_head=None,
-                 roi_head_branch1=None,
-                 roi_head_branch2=None,
+                 wsod_head=None,
                  train_cfg=None,
                  test_cfg=None,
                  pretrained=None):
@@ -35,13 +34,13 @@ class WSOD(BaseDetector):
             rpn_head_.update(train_cfg=rpn_train_cfg, test_cfg=test_cfg.rpn)
             self.rpn_head = build_head(rpn_head_)
 
-        if roi_head_branch1 is not None:
+        if wsod_head is not None:
             # update train and test cfg here for now
             # TODO: refactor assigner & sampler
             rcnn_train_cfg = train_cfg.rcnn if train_cfg is not None else None
-            roi_head_branch1.update(train_cfg=rcnn_train_cfg)
-            roi_head_branch1.update(test_cfg=test_cfg.rcnn)
-            self.roi_head_branch1 = build_head(roi_head_branch1)
+            wsod_head.update(train_cfg=rcnn_train_cfg)
+            wsod_head.update(test_cfg=test_cfg.rcnn)
+            self.wsod_head = build_head(wsod_head)
 
 
         self.train_cfg = train_cfg
@@ -55,13 +54,13 @@ class WSOD(BaseDetector):
         return hasattr(self, 'rpn_head') and self.rpn_head is not None
 
     @property
-    def with_roi_head(self):
+    def with_wsod_head(self):
         """bool: whether the detector has a RoI head"""
-        return hasattr(self, 'roi_head_branch2') and self.roi_head_branch2 is not None
+        return hasattr(self, 'wsod_head') and self.wsod_head is not None
 
     def with_bbox(self):
         """bool: whether the detector has a bbox head"""
-        return ((hasattr(self, 'roi_head_branch2') and self.roi_head_branch2.with_bbox)
+        return ((hasattr(self, 'wsod_head') and self.wsod_head.with_bbox)
                 or (hasattr(self, 'bbox_head') and self.bbox_head is not None))
 
     def init_weights(self, pretrained=None):
@@ -71,7 +70,7 @@ class WSOD(BaseDetector):
             pretrained (str, optional): Path to pre-trained weights.
                 Defaults to None.
         """
-        super(OICR, self).init_weights(pretrained)
+        super(WSOD, self).init_weights(pretrained)
         self.backbone.init_weights(pretrained=pretrained)
         if self.with_neck:
             if isinstance(self.neck, nn.Sequential):
@@ -81,9 +80,8 @@ class WSOD(BaseDetector):
                 self.neck.init_weights()
         if self.with_rpn:
             self.rpn_head.init_weights()
-        if self.with_roi_head:
-            self.roi_head_branch1.init_weights(pretrained)
-            self.roi_head_branch2.init_weights(pretrained)
+        if self.with_wsod_head:
+            self.wsod_head.init_weights(pretrained)
 
     def extract_feat(self, img):
         """Directly extract features from the backbone+neck."""
@@ -106,7 +104,7 @@ class WSOD(BaseDetector):
             outs = outs + (rpn_outs, )
         proposals = torch.randn(1000, 4).to(img.device)
         # roi_head
-        roi_outs = self.roi_head.forward_dummy(x, proposals)
+        roi_outs = self.wsod_head.forward_dummy(x, proposals)
         outs = outs + (roi_outs, )
         return outs
 
@@ -176,13 +174,13 @@ class WSOD(BaseDetector):
 
         else:
             proposal_list = proposals
-        roi_losses = self.roi_head_branch1.forward_train(x, img_metas, proposal_list,
+        wsod_losses = self.wsod_head.forward_train(x, img_metas, proposal_list,
                                                                     gt_bboxes, gt_labels,
                                                                     gt_bboxes_ignore, gt_masks,
                                                                     **kwargs)
 
 
-        losses.update(roi_losses)
+        losses.update(wsod_losses)
         return losses
 
     async def async_simple_test(self,
@@ -200,7 +198,7 @@ class WSOD(BaseDetector):
         else:
             proposal_list = proposals
 
-        return await self.roi_head.async_simple_test(
+        return await self.wsod_head.async_simple_test(
             x, proposal_list, img_meta, rescale=rescale)
 
     def simple_test(self, img, img_metas, proposals=None, rescale=False):
@@ -214,7 +212,7 @@ class WSOD(BaseDetector):
         else:
             proposal_list = proposals
 
-        return self.roi_head_branch2.simple_test(
+        return self.wsod_head.simple_test(
             x, proposal_list, img_metas, rescale=rescale)
 
     def aug_test(self, imgs, img_metas, rescale=False):
@@ -225,7 +223,7 @@ class WSOD(BaseDetector):
         """
         x = self.extract_feats(imgs)
         proposal_list = self.rpn_head.aug_test_rpn(x, img_metas)
-        return self.roi_head.aug_test(
+        return self.wsod_head.aug_test(
             x, proposal_list, img_metas, rescale=rescale)
 
     def forward_test(self, imgs, img_metas, proposals, **kwargs):
