@@ -7,7 +7,7 @@ from .base import BaseDetector
 
 
 @DETECTORS.register_module()
-class OICR(BaseDetector):
+class OICRMOCO(BaseDetector):
     """Base class for two-stage detectors.
 
     Two-stage detectors typically consisting of a region proposal network and a
@@ -20,10 +20,11 @@ class OICR(BaseDetector):
                  rpn_head=None,
                  roi_head_branch1=None,
                  roi_head_branch2=None,
+                 contrast_branch=None,
                  train_cfg=None,
                  test_cfg=None,
                  pretrained=None):
-        super(OICR, self).__init__()
+        super(OICRMOCO, self).__init__()
         self.backbone = build_backbone(backbone)
 
         if neck is not None:
@@ -50,6 +51,9 @@ class OICR(BaseDetector):
             roi_head_branch2.update(train_cfg=rcnn_train_cfg)
             roi_head_branch2.update(test_cfg=test_cfg.rcnn)
             self.roi_head_branch2 = build_head(roi_head_branch2)
+
+        if contrast_branch is not None:
+            self.contrast_branch = build_head(contrast_branch)
 
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
@@ -78,7 +82,7 @@ class OICR(BaseDetector):
             pretrained (str, optional): Path to pre-trained weights.
                 Defaults to None.
         """
-        super(OICR, self).init_weights(pretrained)
+        super(OICRMOCO, self).init_weights(pretrained)
         self.backbone.init_weights(pretrained=pretrained)
         if self.with_neck:
             if isinstance(self.neck, nn.Sequential):
@@ -211,16 +215,17 @@ class OICR(BaseDetector):
                                                             gt_bboxes_ignore, gt_masks,
                                                             **kwargs)
 
-        OAM_Confidence = self.roi_head_branch1.OAM_Confidence(x_weak,[img_metas[1]],[proposal_list[1]],
-                                                              [gt_bboxes[1]],[gt_labels[1]],gt_bboxes_ignore=gt_bboxes_ignore,
-                                                              gt_masks=gt_masks
-                                                              )
+        # OAM_Confidence = self.roi_head_branch1.OAM_Confidence(x_weak,[img_metas[1]],[proposal_list[1]],
+        #                                                       [gt_bboxes[1]],[gt_labels[1]],gt_bboxes_ignore=gt_bboxes_ignore,
+        #                                                       gt_masks=gt_masks
+        #                                                       )
         # print(OAM_Confidence)
         roi_losses_branch2_weak = self.roi_head_branch2.forward_train_weak(x_weak, [img_metas[1]], [proposal_list[1]],
                                                                            oam_bboxes, oam_labels,
                                                                            gt_bboxes_ignore, gt_masks,
                                                                            **kwargs)
-        roi_losses_branch2_weak['loss_cls_weak'] *= OAM_Confidence
+        contrastive_loss = self.contrast_branch.forward_train(x_strong,x_weak,[gt_bboxes[0]],[gt_labels[0]],oam_bboxes,oam_labels)
+        # roi_losses_branch2_weak['loss_cls_weak'] *= OAM_Confidence
         roi_losses_branch1_strong = {}
         for key in roi_losses_branch1_strong_first_pass.keys():
             roi_losses_branch1_strong[key] = roi_losses_branch1_strong_first_pass[key] + roi_losses_branch1_strong_second_pass[key]
@@ -244,6 +249,7 @@ class OICR(BaseDetector):
             # raise Exception
         losses.update(roi_losses_branch2_weak)
         losses.update(roi_losses_branch2_strong)
+        losses.update(contrastive_loss)
         return losses
 
     async def async_simple_test(self,

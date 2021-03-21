@@ -69,7 +69,7 @@ if __name__ == '__main__':
         p = Process(target=work, args=(le*n,le*(n+1)-1))
         process_list.append(p)
         p.start()
-    p = Process(target=work, args=(le*pro_num,total_num-1))
+    p = Process(target=work, args=(le*pro_num,total_num))
     p.start()
     process_list.append(p)
 
