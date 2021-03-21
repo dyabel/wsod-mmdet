@@ -155,13 +155,9 @@ class OICR(BaseDetector):
         Returns:
             dict[str, Tensor]: a dictionary of loss components
         """
-        # print('#'*100)
-        # print(gt_labels)
-        # print(strong_label)
         x = self.extract_feat(img)
         losses = dict()
-        x_strong = tuple([torch.unsqueeze(xx[0],0) for xx in x])
-        x_weak = tuple([torch.unsqueeze(xx[1],0) for xx in x])
+
 
         # RPN forward and loss
         if self.with_rpn:
@@ -169,7 +165,7 @@ class OICR(BaseDetector):
                                               self.test_cfg.rpn)
             if strong_label.any():
                 rpn_losses, proposal_list = self.rpn_head.forward_train_strong(
-                    x_strong,
+                    x,
                     img_metas,
                     gt_bboxes,
                     gt_labels=None,
@@ -178,7 +174,7 @@ class OICR(BaseDetector):
                 losses.update(rpn_losses)
             else:
                 proposal_list_weak = self.rpn_head.forward_train_weak(
-                    x_weak,
+                    x,
                     img_metas,
                     gt_labels=None,
                     gt_bboxes_ignore=gt_bboxes_ignore,
@@ -187,63 +183,20 @@ class OICR(BaseDetector):
 
         else:
             proposal_list = proposals
-        roi_losses_branch1_strong_first_pass,oam_bboxes,oam_labels  = self.roi_head_branch1.forward_train_strong(x_strong, [img_metas[0]], [proposal_list[0]],
-                                                                                       [gt_bboxes[0]], [gt_labels[0]],
-                                                                                       gt_bboxes_ignore, gt_masks,
-                                                                                       **kwargs)
-        roi_losses_branch1_strong_second_pass,oam_bboxes,oam_labels  = self.roi_head_branch1.forward_train_strong(x_strong, [img_metas[0]], oam_bboxes,
-                                                                                           [gt_bboxes[0]], [gt_labels[0]],
-                                                                                           gt_bboxes_ignore, gt_masks,
-                                                                                           **kwargs)
-        roi_losses_branch1_weak_first_pass,oam_bboxes,oam_labels = self.roi_head_branch1.forward_train_weak(x_weak, [img_metas[1]], [proposal_list[1]],
-                                                                                                     [gt_bboxes[1]], [gt_labels[1]],
-                                                                                                     gt_bboxes_ignore, gt_masks,
-                                                                                                     **kwargs)
-        roi_losses_branch1_weak_second_pass,oam_bboxes,oam_labels = self.roi_head_branch1.forward_train_weak(x_weak, [img_metas[1]], oam_bboxes,
-                                                                                                            [gt_bboxes[1]], [gt_labels[1]],
-                                                                                                            gt_bboxes_ignore, gt_masks,
-                                                                                                            **kwargs)
+        roi_losses = self.roi_head_branch1.forward_train(x, img_metas, proposal_list,
+                                                                    gt_bboxes, gt_labels,
+                                                                    gt_bboxes_ignore, gt_masks,
+                                                                    **kwargs)
+
+        # roi_losses_branch1_second_pass,oam_bboxes,oam_labels = self.roi_head_branch1.forward_train(x_weak, [img_metas[1]], [proposal_list[1]],
+        #                                                                                              [gt_bboxes[1]], [gt_labels[1]],
+        #                                                                                              gt_bboxes_ignore, gt_masks,
+        #                                                                                              **kwargs)
+        losses.update(roi_losses)
+        # losses.update(roi_losses_branch1_second_pass)
 
 
 
-        roi_losses_branch2_strong = self.roi_head_branch2.forward_train_strong(x_strong, [img_metas[0]], [proposal_list[0]],
-                                                            [gt_bboxes[0]], [gt_labels[0]],
-                                                            gt_bboxes_ignore, gt_masks,
-                                                            **kwargs)
-
-        OAM_Confidence = self.roi_head_branch1.OAM_Confidence(x_weak,[img_metas[1]],[proposal_list[1]],
-                                                              [gt_bboxes[1]],[gt_labels[1]],gt_bboxes_ignore=gt_bboxes_ignore,
-                                                              gt_masks=gt_masks
-                                                              )
-        # print(OAM_Confidence)
-        roi_losses_branch2_weak = self.roi_head_branch2.forward_train_weak(x_weak, [img_metas[1]], [proposal_list[1]],
-                                                                           oam_bboxes, oam_labels,
-                                                                           gt_bboxes_ignore, gt_masks,
-                                                                           **kwargs)
-        roi_losses_branch2_weak['loss_cls_weak'] *= OAM_Confidence
-        roi_losses_branch1_strong = {}
-        for key in roi_losses_branch1_strong_first_pass.keys():
-            roi_losses_branch1_strong[key] = roi_losses_branch1_strong_first_pass[key] + roi_losses_branch1_strong_second_pass[key]
-            if 'acc' in key:
-                roi_losses_branch1_strong[key] /=2
-
-        roi_losses_branch1_weak = {}
-        for key in roi_losses_branch1_weak_first_pass.keys():
-            roi_losses_branch2_weak[key] = roi_losses_branch1_weak_first_pass[key] + roi_losses_branch1_weak_second_pass[key]
-            if 'acc' in key:
-                roi_losses_branch1_strong[key] /=2
-
-
-
-        losses.update(roi_losses_branch1_weak)
-        losses.update(roi_losses_branch1_strong)
-        # print('#'*100)
-        # print(gt_labels[1],oam_labels)
-        # if oam_labels[0].size() != torch.Size([0]):
-        #     print('oam_generation',oam_labels[0].size())
-            # raise Exception
-        losses.update(roi_losses_branch2_weak)
-        losses.update(roi_losses_branch2_strong)
         return losses
 
     async def async_simple_test(self,
