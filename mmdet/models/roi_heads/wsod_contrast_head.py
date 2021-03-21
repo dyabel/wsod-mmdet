@@ -22,7 +22,7 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                  shared_head=None,
                  train_cfg=None,
                  test_cfg=None):
-        super(WsodContrastHead,self).init(
+        super(WsodContrastHead,self).__init__(
                  bbox_roi_extractor=bbox_roi_extractor,
                  bbox_head=bbox_head,
                  mask_roi_extractor=mask_roi_extractor,
@@ -469,11 +469,12 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         oam_bboxes_weak, oam_labels_weak = bbox_select_per_class(bbox_results_weak_pseudo['bbox_pred'],
                                                                  bbox_results_weak_pseudo['cls_score'],
                                                                  img_level_label,
-                                                                 score_thr=0.1,
+                                                                 score_thr=0,
                                                                  nms_cfg={'iou_threshold': 0.5},
                                                                  max_num=-1
                                                                  )
-        contrastive_losses = self.ContrastiveHead.forward_train(bbox_feats_strong,bbox_feats_weak,gt_bboxes[0],gt_labels[0],oam_bboxes_weak,oam_labels_weak)
+        print(oam_labels_weak)
+        contrastive_losses = self.contrast_head.forward_train(bbox_feats_strong,bbox_feats_weak,gt_bboxes[0],gt_labels[0],oam_bboxes_weak,oam_labels_weak)
         bbox_results_strong_branch2 = self._bbox_forward_strong_branch2(bbox_feats_strong)
         loss_bbox_strong_branch2 = self.bbox_head.loss_strong(bbox_results_strong_branch2['cls_score'],
                                                               bbox_results_strong_branch2['bbox_pred'],

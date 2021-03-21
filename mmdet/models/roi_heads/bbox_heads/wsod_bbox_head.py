@@ -182,7 +182,7 @@ class ConvFCWSODHead(BBoxHead):
         bbox_pred = self.fc_reg_weak_branch1(x_reg) if self.with_reg else None
         cls_score = F.softmax(cls_score,dim=0)
         bbox_pred = F.softmax(bbox_pred,dim=1)
-        cls_proposal_mat = cls_score*bbox_pred
+        # cls_proposal_mat = cls_score*bbox_pred
 
         return cls_score*bbox_pred
     #duyu

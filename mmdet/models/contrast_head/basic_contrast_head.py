@@ -8,14 +8,16 @@ class BaseContrastHead(nn.Module, metaclass=ABCMeta):
     def __init__(self):
         super(BaseContrastHead,self).__init__()
 
-    def forwad_train(self,
-                     bbox_feats_strong,
-                     bbox_feats_weak,
+    def forward_train(self,
+                     x_strong,
+                     x_weak,
                      strong_bboxes,
                      strong_labels,
                      oam_bboxes,
                      oam_labels):
         torch_device = strong_labels[0].get_device()
+        for label in oam_labels:
+            if label in strong_labels:
+                print(label)
+        return 0
 
-
-        pass

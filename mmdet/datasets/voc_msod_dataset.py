@@ -52,6 +52,7 @@ class VocMsodDataset(CustomDataset):
                                          img_prefix=img_prefix,seg_prefix=seg_prefix,proposal_file=proposal_file,
                                          test_mode=test_mode,filter_empty_gt=filter_empty_gt)
         # filter images too small and containing no annotations
+        print('weak_ann_frac%d'%weak_ann_frac)
         if not test_mode:
             valid_inds = self._filter_imgs()
             self.id_idx = {}

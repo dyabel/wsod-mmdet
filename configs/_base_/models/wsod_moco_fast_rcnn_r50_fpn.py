@@ -16,7 +16,7 @@ model = dict(
         out_channels=256,
         num_outs=5),
     wsod_head=dict(
-        type='WsodHead',
+        type='WsodContrastHead',
         bbox_roi_extractor=dict(
             type='SingleRoIExtractor',
             roi_layer=dict(type='RoIAlign', output_size=7, sampling_ratio=0),
@@ -39,7 +39,7 @@ model = dict(
                 type='MyCrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
             loss_bbox=dict(type='SmoothL1Loss', loss_weight=1.0)),
     contrast_head=dict(
-            type='BasicContrastHead'
+            type='BaseContrastHead'
     )
     ),
     # model training and testing settings

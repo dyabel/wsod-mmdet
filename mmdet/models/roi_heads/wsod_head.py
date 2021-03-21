@@ -373,7 +373,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         oam_bboxes_strong,oam_labels_strong = bbox_select_per_class(bbox_results_strong['bbox_pred'],
                                                       bbox_results_strong['cls_score'],
                                                       img_level_label,
-                                                      score_thr=0.1,
+                                                      score_thr=0,
                                                       nms_cfg={'iou_threshold':0.5},
                                                       max_num=-1
                                                       )
@@ -382,11 +382,10 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         oam_bboxes_weak,oam_labels_weak = bbox_select_per_class(bbox_results_weak_pseudo['bbox_pred'],
                                                                     bbox_results_weak_pseudo['cls_score'],
                                                                     img_level_label,
-                                                                    score_thr=0.1,
+                                                                    score_thr=0,
                                                                     nms_cfg={'iou_threshold':0.5},
                                                                     max_num=-1
                                                                     )
-
         oam_bboxes = []
         oam_labels = []
         oam_bboxes.append(oam_bboxes_strong[:,:4])
@@ -447,10 +446,11 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         oam_bboxes_weak, oam_labels_weak = bbox_select_per_class(bbox_results_weak_pseudo['bbox_pred'],
                                                                  bbox_results_weak_pseudo['cls_score'],
                                                                  img_level_label,
-                                                                 score_thr=0.1,
+                                                                 score_thr=0,
                                                                  nms_cfg={'iou_threshold': 0.5},
                                                                  max_num=-1
                                                                  )
+        print(oam_labels_weak)
         bbox_results_strong_branch2 = self._bbox_forward_strong_branch2(bbox_feats_strong)
         loss_bbox_strong_branch2 = self.bbox_head.loss_strong(bbox_results_strong_branch2['cls_score'],
                                                               bbox_results_strong_branch2['bbox_pred'],
