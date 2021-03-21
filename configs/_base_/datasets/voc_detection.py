@@ -49,7 +49,7 @@ data = dict(
         pipeline=test_pipeline),
     test=dict(
         type=dataset_type,
-        ann_file=data_root + 'VOC2012/val.json',
+        ann_file=data_root + 'VOC2012/train.json',
         # ann_file=[data_root + 'VOC2007/test.json',
         #           data_root + 'VOC2012/val.json'],
         # img_prefix=[data_root + 'VOC2007/JPEGImages',data_root + 'VOC2012/JPEGImages'],
