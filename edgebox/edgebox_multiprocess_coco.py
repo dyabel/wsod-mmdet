@@ -14,14 +14,18 @@ from multiprocessing import Process
 import os
 import mmcv
 import json
-path_prefix = '../../data/VOCdevkit/'
+# path_prefix = '../data/VOCdevkit/'
+path_prefix = '../../data/coco/'
 
 def work(begin_line,end_line):
     cnt = 0
     inner_cnt = 0
     proposals_list = []
-    with open(path_prefix + 'train.txt', 'r') as f:
-        for line in f.readlines():
+    # with open(path_prefix + 'train.txt', 'r') as f:
+    with open(path_prefix + 'annotations/instances_train2017.json', 'r') as f:
+        js = json.load(f)
+        for img in js['images']:
+        # for line in f.readlines():
             cnt += 1
             if cnt<begin_line:
                 continue
@@ -30,9 +34,11 @@ def work(begin_line,end_line):
             inner_cnt += 1
             if inner_cnt % 10 == 0:
                 print('process %d gone %d'%(begin_line,inner_cnt))
-            img_name = line.strip() + '.jpg'
-            im = cv.imread(path_prefix + 'JPEGImages/' + img_name)
-            # im = cv.imread(path_prefix + 'train2017/' + img_name)
+            # img_name = line.strip() + '.jpg'
+            img_name = img['file_name']
+
+            # im = cv.imread(path_prefix + 'JPEGImages/' + img_name)
+            im = cv.imread(path_prefix + 'train2017/' + img_name)
             edge_detection = cv.ximgproc.createStructuredEdgeDetection(model)
             rgb_im = cv.cvtColor(im, cv.COLOR_BGR2RGB)
             edges = edge_detection.detectEdges(np.float32(rgb_im) / 255.0)
@@ -50,7 +56,7 @@ def work(begin_line,end_line):
                 x, y, w, h = b
                 proposals.append([x,y,w,h,boxes[1][i]])
             proposals_list.append(proposals)
-    mmcv.dump(proposals_list,'../../edgebox_dump_dir/'+str(begin_line)+'.pkl')
+    mmcv.dump(proposals_list,'../../edgebox_dump_dir_coco/'+str(begin_line)+'.pkl')
 
 if __name__ == '__main__':
     print(os.cpu_count())
@@ -60,8 +66,11 @@ if __name__ == '__main__':
     # im = cv.imread(sys.argv[2])
     cnt = 0
     process_list = []
-    with open(path_prefix + 'train.txt', 'r') as f:
-        total_num = len(f.readlines())
+    # with open(path_prefix + 'train.txt', 'r') as f:
+    #     total_num = len(f.readlines())
+    with open(path_prefix + 'annotations/instances_train2017.json', 'r') as f:
+        js = json.load(f)
+        total_num = len(js['images'])
     pro_num = 40
     proposals_list = [[] for i in range(pro_num+1)]
     le = total_num // pro_num
