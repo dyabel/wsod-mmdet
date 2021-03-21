@@ -1,15 +1,16 @@
 from abc import ABCMeta,abstractmethod
 import torch.nn as nn
-from ..builder import build_head
+from ..builder import HEADS, build_head, build_roi_extractor
 
+@HEADS.register_module()
 class BaseContrastHead(nn.Module, metaclass=ABCMeta):
     "Base class for ContrastHead"
     def __init__(self):
         super(BaseContrastHead,self).__init__()
 
     def forwad_train(self,
-                     x_strong,
-                     x_weak,
+                     bbox_feats_strong,
+                     bbox_feats_weak,
                      strong_bboxes,
                      strong_labels,
                      oam_bboxes,
