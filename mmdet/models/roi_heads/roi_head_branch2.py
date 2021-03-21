@@ -231,9 +231,9 @@ class RoIHeadBranch2(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         acc_weak = accuracy(bbox_results['cls_score'],labels)
         bbox_targets = self.bbox_head.get_targets(sampling_results, gt_bboxes,
                                                   gt_labels, self.train_cfg)
-        loss_bbox_strong = self.bbox_head.loss_strong(bbox_results['cls_score'],
-                                                      bbox_results['bbox_pred'], rois,
-                                                      *bbox_targets)
+        # loss_bbox_strong = self.bbox_head.loss_strong(bbox_results['cls_score'],
+        #                                               bbox_results['bbox_pred'], rois,
+        #                                               *bbox_targets)
         loss_bbox['acc_weak'] = acc_weak
         bbox_results.update(loss_bbox=loss_bbox)
         return bbox_results

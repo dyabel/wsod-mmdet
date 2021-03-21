@@ -156,21 +156,6 @@ class ConvFCOICRHeadBranch1(BBoxHead):
                     nn.init.constant_(m.bias, 0)
     #duyu
     def forward_weak(self, x):
-        # shared part
-        if self.num_shared_convs > 0:
-            for conv in self.shared_convs:
-                x = conv(x)
-
-        if self.num_shared_fcs > 0:
-            if self.with_avg_pool:
-                x = self.avg_pool(x)
-
-
-
-            x = x.flatten(1)
-
-            for fc in self.shared_fcs:
-                x = self.relu(fc(x))
         # separate branches
         x_cls = x
         x_reg = x
@@ -202,19 +187,6 @@ class ConvFCOICRHeadBranch1(BBoxHead):
         return cls_score*bbox_pred
     #duyu
     def forward_strong_branch1(self, x):
-        # shared part
-        if self.num_shared_convs > 0:
-            for conv in self.shared_convs:
-                x = conv(x)
-
-        if self.num_shared_fcs > 0:
-            if self.with_avg_pool:
-                x = self.avg_pool(x)
-
-            x = x.flatten(1)
-
-            for fc in self.shared_fcs:
-                x = self.relu(fc(x))
         # separate branches
         x_cls = x
         x_reg = x
@@ -240,8 +212,7 @@ class ConvFCOICRHeadBranch1(BBoxHead):
         cls_score = self.fc_cls(x_cls) if self.with_cls else None
         bbox_pred = self.fc_reg(x_reg) if self.with_reg else None
         return cls_score, bbox_pred
-    #duyu
-    def forward_strong_branch2(self, x):
+    def double_fc_forward(self,x):
         # shared part
         if self.num_shared_convs > 0:
             for conv in self.shared_convs:
@@ -255,6 +226,9 @@ class ConvFCOICRHeadBranch1(BBoxHead):
 
             for fc in self.shared_fcs:
                 x = self.relu(fc(x))
+        return x
+    #duyu
+    def forward_strong_branch2(self, x):
         # separate branches
         x_cls = x
         x_reg = x

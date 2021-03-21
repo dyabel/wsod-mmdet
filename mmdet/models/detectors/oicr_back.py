@@ -43,13 +43,6 @@ class OICR(BaseDetector):
             roi_head_branch1.update(test_cfg=test_cfg.rcnn)
             self.roi_head_branch1 = build_head(roi_head_branch1)
 
-        if roi_head_branch2 is not None:
-            # update train and test cfg here for now
-            # TODO: refactor assigner & sampler
-            rcnn_train_cfg = train_cfg.rcnn if train_cfg is not None else None
-            roi_head_branch2.update(train_cfg=rcnn_train_cfg)
-            roi_head_branch2.update(test_cfg=test_cfg.rcnn)
-            self.roi_head_branch2 = build_head(roi_head_branch2)
 
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
@@ -188,15 +181,8 @@ class OICR(BaseDetector):
                                                                     gt_bboxes_ignore, gt_masks,
                                                                     **kwargs)
 
-        # roi_losses_branch1_second_pass,oam_bboxes,oam_labels = self.roi_head_branch1.forward_train(x_weak, [img_metas[1]], [proposal_list[1]],
-        #                                                                                              [gt_bboxes[1]], [gt_labels[1]],
-        #                                                                                              gt_bboxes_ignore, gt_masks,
-        #                                                                                              **kwargs)
+
         losses.update(roi_losses)
-        # losses.update(roi_losses_branch1_second_pass)
-
-
-
         return losses
 
     async def async_simple_test(self,
