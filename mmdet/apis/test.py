@@ -91,11 +91,7 @@ def multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
     model.eval()
     results = []
     dataset = data_loader.dataset
-    # print(dataset)
     rank, world_size = get_dist_info()
-    # time_start = time.time()
-    print('rank %d test'%rank)
-    # print('world size',world_size)
     if rank == 0:
         prog_bar = mmcv.ProgressBar(len(dataset))
     time.sleep(2)  # This line can prevent deadlock problem in some cases.
@@ -116,14 +112,9 @@ def multi_gpu_test(model, data_loader, tmpdir=None, gpu_collect=False):
 
     # collect results from all ranks
     if gpu_collect:
-        # print('collect by gpu')
         results = collect_results_gpu(results, len(dataset))
     else:
-        # print('collect by cpu')
         results = collect_results_cpu(results, len(dataset), tmpdir)
-    # time_end = time.time()
-    # print('time elapsed')
-    # print('%.f'%(time_end-time_start))
     return results
 
 

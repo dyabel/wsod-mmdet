@@ -373,9 +373,9 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                       bbox_results_strong['bbox_pred'], rois_strong,
                                                       *bbox_targets_strong)
         loss_strong = dict()
-        loss_strong['loss_cls_strong_branch1_fp'] = loss_bbox_strong['loss_cls_strong']
+        loss_strong['loss_cls_strong_branch1_fp'] = loss_bbox_strong['loss_cls_strong']*0
         loss_strong['acc_strong_branch1_fp'] = loss_bbox_strong['acc_strong']
-        loss_strong['loss_bbox_strong_branch1_fp'] = loss_bbox_strong['loss_bbox_strong']
+        loss_strong['loss_bbox_strong_branch1_fp'] = loss_bbox_strong['loss_bbox_strong']*0
         bbox_results_strong.update(loss_bbox_strong_fp=loss_strong)
         img_level_label,label_weights = convert_label(gt_labels[0],bbox_results_strong['cls_score'].size(1)-1)
         oam_bboxes_strong,oam_labels_strong = bbox_select_per_class(bbox_results_strong['bbox_pred'],
@@ -397,7 +397,7 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                       rois_weak,
                                                       *bbox_targets_weak)
         loss_weak = dict()
-        loss_weak['loss_img_level_fp'] = loss_bbox_weak['loss_img_level']
+        loss_weak['loss_img_level_fp'] = loss_bbox_weak['loss_img_level']*0
         bbox_results_weak.update(loss_bbox_weak_fp=loss_weak)
         img_level_label,label_weights = convert_label(gt_labels[1],bbox_results_weak_pseudo['cls_score'].size(1)-1)
         oam_bboxes_weak,oam_labels_weak = bbox_select_per_class(bbox_results_weak_pseudo['bbox_pred'],
@@ -450,21 +450,21 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                               bbox_results_strong_branch1['bbox_pred'], rois_strong,
                                                               *bbox_targets_strong)
         loss_strong_branch1 = dict()
-        loss_strong_branch1['loss_cls_strong_branch1_sp'] = loss_bbox_strong_branch1['loss_cls_strong']
-        loss_strong_branch1['loss_bbox_strong_branch1_sp'] = loss_bbox_strong_branch1['loss_bbox_strong']
+        loss_strong_branch1['loss_cls_strong_branch1_sp'] = loss_bbox_strong_branch1['loss_cls_strong']*0
+        loss_strong_branch1['loss_bbox_strong_branch1_sp'] = loss_bbox_strong_branch1['loss_bbox_strong']*0
         loss_strong_branch1['acc_strong_branch1_sp'] = loss_bbox_strong_branch1['acc_strong']
         bbox_results_strong_branch1.update(loss_bbox_strong_branch1_sp=loss_strong_branch1)
         #calculate loss_weak_branch1
-        bbox_targets_weak = self.bbox_head.get_targets([sampling_results[1]], [gt_bboxes[1]],
+        bbox_targets_weak_branch1 = self.bbox_head.get_targets([sampling_results[1]], [gt_bboxes[1]],
                                                        [gt_labels[1]], self.train_cfg)
         bbox_results_weak_pseudo = self._bbox_forward_strong_branch1(bbox_feats_weak)
         bbox_results_weak_branch1 = self._bbox_forward_weak(bbox_feats_weak)
         loss_bbox_weak_branch1 = self.bbox_head.loss_weak(bbox_results_weak_branch1['cls_proposal_mat'],
                                                       rois_weak,
-                                                      *bbox_targets_weak)
+                                                      *bbox_targets_weak_branch1)
 
         loss_weak_branch1 = dict()
-        loss_weak_branch1['loss_img_level_sp'] = loss_bbox_weak_branch1['loss_img_level']
+        loss_weak_branch1['loss_img_level_sp'] = loss_bbox_weak_branch1['loss_img_level']*0
         bbox_results_weak_branch1.update(loss_bbox_weak_branch1_sp=loss_weak_branch1)
         #generate oam labels for weak image
         img_level_label, label_weights = convert_label(gt_labels[1], bbox_results_weak_pseudo['cls_score'].size(1) - 1)
@@ -492,18 +492,22 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         #calculate loss_weak_branch2
         bbox_results_weak_branch2 = self._bbox_forward_strong_branch2(bbox_feats_weak)
 
-        # bbox_targets_weak_branch2 = self.bbox_head.get_targets([sampling_results[1]],oam_bboxes_weak,oam_labels_weak,self.train_cfg)
-        bbox_targets_weak_branch2 = self.bbox_head.get_targets([sampling_results[1]],[gt_bboxes[1]],[gt_labels[1]],self.train_cfg)
+        bbox_targets_weak_branch2 = self.bbox_head.get_targets([sampling_results[1]],oam_bboxes_weak,oam_labels_weak,self.train_cfg)
+        # bbox_targets_weak_branch2 = self.bbox_head.get_targets([sampling_results[1]],[gt_bboxes[1]],[gt_labels[1]],self.train_cfg)
         labels,label_weights,bbox_targets,bbox_weights = bbox_targets_weak_branch2
         avg_factor = max(torch.sum(label_weights > 0).float().item(), 1.)
         acc_weak = accuracy(bbox_results_weak_branch2['cls_score'],labels)
 
         loss_bbox_weak_branch2 = dict()
-        loss_bbox_weak_branch2['loss_cls_weak_branch2'] = self.bbox_head.loss_cls(bbox_results_weak_branch2['cls_score'], labels,
-                                                             label_weights,
-                                                             avg_factor=avg_factor,
-                                                             reduction_override=None)
-        loss_bbox_weak_branch2['acc_weak_branch2'] = acc_weak
+        loss_bbox_weak_branch2 = self.bbox_head.loss_strong(bbox_results_weak_branch2['cls_score'],
+                                                              bbox_results_weak_branch2['bbox_pred'],
+                                                              rois_weak,
+                                                              *bbox_targets_weak_branch1)
+        # loss_bbox_weak_branch2['loss_cls_weak_branch2'] = self.bbox_head.loss_cls(bbox_results_weak_branch2['cls_score'], labels,
+        #                                                      label_weights,
+        #                                                      avg_factor=avg_factor,
+        #                                                      reduction_override=None)
+        # loss_bbox_weak_branch2['acc_weak_branch2'] = acc_weak
         bbox_results_weak_branch2.update(loss_bbox_weak_branch2=loss_bbox_weak_branch2)
 
         return bbox_results_weak_branch1,bbox_results_strong_branch1,bbox_results_weak_branch2,bbox_results_strong_branch2,contrastive_losses

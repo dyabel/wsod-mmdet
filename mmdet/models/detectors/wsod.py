@@ -113,7 +113,7 @@ class WSOD(BaseDetector):
                       img_metas,
                       gt_bboxes,
                       gt_labels,
-                      strong_label,
+                      strong_label=None,
                       gt_bboxes_ignore=None,
                       gt_masks=None,
                       proposals=None,

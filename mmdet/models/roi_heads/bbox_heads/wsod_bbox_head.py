@@ -104,6 +104,23 @@ class ConvFCWSODHead(BBoxHead):
             self.fc_reg_branch2 = nn.Linear(self.reg_last_dim, out_dim_reg)
             # print(out_dim_reg)
 
+    def init_weights(self):
+        # conv layers are already initialized by ConvModule
+        if self.with_cls:
+            nn.init.normal_(self.fc_cls.weight, 0, 0.01)
+            nn.init.constant_(self.fc_cls.bias, 0)
+            nn.init.normal_(self.fc_cls_weak_branch1.weight, 0, 0.01)
+            nn.init.constant_(self.fc_cls_weak_branch1.bias, 0)
+            nn.init.normal_(self.fc_cls_branch2.weight, 0, 0.01)
+            nn.init.constant_(self.fc_cls_branch2.bias, 0)
+        if self.with_reg:
+            nn.init.normal_(self.fc_reg.weight, 0, 0.001)
+            nn.init.constant_(self.fc_reg.bias, 0)
+            nn.init.normal_(self.fc_reg_weak_branch1.weight, 0, 0.001)
+            nn.init.constant_(self.fc_reg_weak_branch1.bias, 0)
+            nn.init.normal_(self.fc_reg_branch2.weight, 0, 0.001)
+            nn.init.constant_(self.fc_reg_branch2.bias, 0)
+
     def _add_conv_fc_branch(self,
                             num_branch_convs,
                             num_branch_fcs,

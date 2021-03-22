@@ -513,12 +513,12 @@ class VocMsodDataset(CustomDataset):
         if self.id_labelattr[img_info['id']] == -1:
             self.id_labelattr[img_info['id']] = True
             print('error')
-        if self.id_labelattr[img_info['id']]:
-            results['strong_label'] = True
-        elif self.id_labelattr[img_info['id']]:
-            results['strong_label'] = False
-        else:
-            results['strong_label'] = False
+        # if self.id_labelattr[img_info['id']]:
+        #     results['strong_label'] = True
+        # elif self.id_labelattr[img_info['id']]:
+        #     results['strong_label'] = False
+        # else:
+        #     results['strong_label'] = False
         # if not results['strong_label']:
         #     labels = results['gt_labels'].data
         #     label_img_level = torch.zeros(self.num_classes)

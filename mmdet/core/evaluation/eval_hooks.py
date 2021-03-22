@@ -223,7 +223,6 @@ class DistEvalHook(EvalHook):
         self.gpu_collect = gpu_collect
 
     def after_train_epoch(self, runner):
-        print('after_train_epoch hook entered')
         if not self.evaluation_flag(runner):
             return
 
