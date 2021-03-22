@@ -41,6 +41,7 @@ test_pipeline = [
 data = dict(
     samples_per_gpu=2,
     workers_per_gpu=2,
+    weak_frac_ann = 5,
     train=dict(
         proposal_file=data_root + 'proposals/rpn_r101_fpn_voc_train_2012.pkl',
         pipeline=train_pipeline),

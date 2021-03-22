@@ -194,7 +194,7 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                               gt_masks=None):
         losses_first_pass,oam_bboxes,oam_labels = self.forward_train_first_pass(x,img_metas,proposal_list,gt_bboxes,gt_labels,gt_bboxes_ignore,
                                                        gt_masks=None)
-        losses_second_pass = self.forward_train_second_pass(x,img_metas,oam_bboxes,gt_bboxes,gt_labels,gt_bboxes_ignore,
+        losses_second_pass = self.forward_train_second_pass(x,img_metas,proposal_list,gt_bboxes,gt_labels,gt_bboxes_ignore,
                                                                              gt_masks=None)
         losses = dict()
         losses.update(losses_first_pass)
@@ -572,6 +572,7 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                 rescale=False):
         """Async test without augmentation."""
         assert self.with_bbox, 'Bbox head must be implemented.'
+        print('async_simple_test')
 
         det_bboxes, det_labels = await self.async_test_bboxes(
             x, img_metas, proposal_list, self.test_cfg, rescale=rescale)
