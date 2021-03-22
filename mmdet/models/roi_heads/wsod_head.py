@@ -386,6 +386,11 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                                     nms_cfg={'iou_threshold':0.5},
                                                                     max_num=-1
                                                                     )
+        # OAM_Confidence = self.roi_head_branch1.OAM_Confidence(x_weak, [img_metas[1]], [proposal_list[1]],
+        #                                                       [gt_bboxes[1]], [gt_labels[1]],
+        #                                                       gt_bboxes_ignore=gt_bboxes_ignore,
+        #                                                       gt_masks=gt_masks
+        #                                                       )
         oam_bboxes = []
         oam_labels = []
         oam_bboxes.append(oam_bboxes_strong[:,:4])
@@ -450,7 +455,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                                  nms_cfg={'iou_threshold': 0.5},
                                                                  max_num=-1
                                                                  )
-        print(oam_labels_weak)
+        # print(oam_labels_weak)
         bbox_results_strong_branch2 = self._bbox_forward_strong_branch2(bbox_feats_strong)
         loss_bbox_strong_branch2 = self.bbox_head.loss_strong(bbox_results_strong_branch2['cls_score'],
                                                               bbox_results_strong_branch2['bbox_pred'],
