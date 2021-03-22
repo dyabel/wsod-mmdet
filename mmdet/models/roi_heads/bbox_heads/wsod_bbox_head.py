@@ -276,15 +276,15 @@ class ConvFCWSODHead(BBoxHead):
     def loss_weak(self,
              cls_proposal_mat,
              label_img_level,
-             label_weights,
              reduction_override=None):
         losses = dict()
         phi = torch.sum(cls_proposal_mat,dim=0)
+        torch_device = label_img_level.get_device()
+        label_weights = torch.ones(label_img_level.size(0)).to(torch_device)
         avg_factor = max(torch.sum(label_weights > 0).float().item(), 1.)
         # torch.set_printoptions(profile="full")
         # num_cls = cls_proposal_mat.size(1)
         # label_img_level,label_weights = convert_label(labels,num_cls)
-
         losses['loss_img_level'] = self.loss_cls_weak(phi,
                                                  label_img_level,
                                                  label_weights,

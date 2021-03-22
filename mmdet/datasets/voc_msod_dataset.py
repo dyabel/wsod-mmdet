@@ -12,7 +12,7 @@ from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 from terminaltables import AsciiTable
 
-from mmdet.core import eval_recalls
+from mmdet.core import eval_recalls,convert_label
 from .builder import DATASETS
 from .custom import CustomDataset
 import random
@@ -510,24 +510,17 @@ class VocMsodDataset(CustomDataset):
             results['proposals'] = self.proposals[idx]
         self.pre_pipeline(results)
         results = self.pipeline(results)
-        if self.id_labelattr[img_info['id']] == -1:
-            self.id_labelattr[img_info['id']] = True
-            print('error')
+        results['num_cls'] = self.num_classes
+        # if self.id_labelattr[img_info['id']] == -1:
+        #     self.id_labelattr[img_info['id']] = True
+        #     print('error')
         # if self.id_labelattr[img_info['id']]:
         #     results['strong_label'] = True
         # elif self.id_labelattr[img_info['id']]:
         #     results['strong_label'] = False
         # else:
         #     results['strong_label'] = False
-        # if not results['strong_label']:
         #     labels = results['gt_labels'].data
-        #     label_img_level = torch.zeros(self.num_classes)
-        #     for i in labels:
-        #         if i == self.num_classes:
-        #             pass
-        #         else:
-        #             label_img_level[i] = 1.0
-        #     results['gt_labels'].data = label_img_level
         return results
 
     def evaluate(self,
