@@ -114,6 +114,7 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
 
 
     #duyu
+    #TODO online augmentation
     @torch.no_grad()
     def OAM_Confidence(self,
                     x,
@@ -184,6 +185,7 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             oam_bboxes,oam_labels = oam_bboxes_next,oam_labels_next
         return T
     #duyu
+    #TODO Double pass seems not work well. Here the first pass is removed
     def forward_train(self,
                               x,
                               img_metas,
@@ -192,12 +194,12 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                               gt_labels,
                               gt_bboxes_ignore=None,
                               gt_masks=None):
-        losses_first_pass,oam_bboxes,oam_labels = self.forward_train_first_pass(x,img_metas,proposal_list,gt_bboxes,gt_labels,gt_bboxes_ignore,
-                                                       gt_masks=None)
+        # losses_first_pass,oam_bboxes,oam_labels = self.forward_train_first_pass(x,img_metas,proposal_list,gt_bboxes,gt_labels,gt_bboxes_ignore,
+        #                                                gt_masks=None)
         losses_second_pass = self.forward_train_second_pass(x,img_metas,proposal_list,gt_bboxes,gt_labels,gt_bboxes_ignore,
                                                                              gt_masks=None)
         losses = dict()
-        losses.update(losses_first_pass)
+        # losses.update(losses_first_pass)
         losses.update(losses_second_pass)
         return losses
     #duyu
@@ -279,20 +281,37 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                               gt_masks=None):
         if self.with_bbox or self.with_mask:
             num_imgs = len(img_metas)
+
             if gt_bboxes_ignore is None:
                 gt_bboxes_ignore = [None for _ in range(num_imgs)]
             sampling_results = []
-            for i in range(num_imgs):
-                assign_result = self.bbox_assigner.assign(
-                    proposal_list[i], gt_bboxes[i], gt_bboxes_ignore[i],
-                    gt_labels[i])
-                sampling_result = self.bbox_sampler.sample(
-                    assign_result,
-                    proposal_list[i],
-                    gt_bboxes[i],
-                    gt_labels[i],
-                    feats=[lvl_feat[i][None] for lvl_feat in x])
-                sampling_results.append(sampling_result)
+            assert num_imgs == 2
+            #assign for strong image
+            assign_result = self.bbox_assigner.assign(
+                proposal_list[0], gt_bboxes[0], gt_bboxes_ignore[0],
+                gt_labels[0])
+            sampling_result = self.bbox_sampler.sample(
+                assign_result,
+                proposal_list[0],
+                gt_bboxes[0],
+                gt_labels[0],
+                feats=[lvl_feat[0][None] for lvl_feat in x])
+            sampling_results.append(sampling_result)
+
+            #assign for weak image
+            assign_result = self.bbox_assigner.assign(
+                proposal_list[1], gt_bboxes[1], gt_bboxes_ignore[0],
+                gt_labels=None)
+            sampling_result = self.bbox_sampler.sample(
+                assign_result,
+                proposal_list[1],
+                gt_bboxes[1],
+                gt_labels=None,
+                feats=[lvl_feat[1][None] for lvl_feat in x])
+
+            sampling_results.append(sampling_result)
+            print('#'*100)
+            print(sampling_results)
 
         losses = dict()
         # bbox head forward and loss
@@ -300,7 +319,7 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             bbox_results_weak_branch1, bbox_results_strong_branch1, bbox_results_weak_branch2, bbox_results_strong_branch2,contrastive_losses = \
                                                                     self._bbox_forward_train_second_pass(x, sampling_results,
                                                                                                      gt_bboxes, gt_labels,
-                                                                                                     img_metas)
+                                                                                                     img_metas,gt_bboxes_ignore=gt_bboxes_ignore)
 
             losses.update(bbox_results_weak_branch1['loss_bbox_weak_branch1_sp'])
             losses.update(bbox_results_strong_branch1['loss_bbox_strong_branch1_sp'])
@@ -373,9 +392,9 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                       bbox_results_strong['bbox_pred'], rois_strong,
                                                       *bbox_targets_strong)
         loss_strong = dict()
-        loss_strong['loss_cls_strong_branch1_fp'] = loss_bbox_strong['loss_cls_strong']*0
+        loss_strong['loss_cls_strong_branch1_fp'] = loss_bbox_strong['loss_cls_strong']
         loss_strong['acc_strong_branch1_fp'] = loss_bbox_strong['acc_strong']
-        loss_strong['loss_bbox_strong_branch1_fp'] = loss_bbox_strong['loss_bbox_strong']*0
+        loss_strong['loss_bbox_strong_branch1_fp'] = loss_bbox_strong['loss_bbox_strong']
         bbox_results_strong.update(loss_bbox_strong_fp=loss_strong)
         img_level_label,label_weights = convert_label(gt_labels[0],bbox_results_strong['cls_score'].size(1)-1)
         oam_bboxes_strong,oam_labels_strong = bbox_select_per_class(bbox_results_strong['bbox_pred'],
@@ -397,7 +416,7 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                       rois_weak,
                                                       *bbox_targets_weak)
         loss_weak = dict()
-        loss_weak['loss_img_level_fp'] = loss_bbox_weak['loss_img_level']*0
+        loss_weak['loss_img_level_fp'] = loss_bbox_weak['loss_img_level']
         bbox_results_weak.update(loss_bbox_weak_fp=loss_weak)
         img_level_label,label_weights = convert_label(gt_labels[1],bbox_results_weak_pseudo['cls_score'].size(1)-1)
         oam_bboxes_weak,oam_labels_weak = bbox_select_per_class(bbox_results_weak_pseudo['bbox_pred'],
@@ -418,8 +437,34 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         oam_labels.append(oam_labels_weak.to(torch_device))
         return bbox_results_strong,bbox_results_weak,oam_bboxes,oam_labels
     #duyu
+    def contrast_forward_train(self,
+                         x_strong,
+                         x_weak,
+                         strong_bboxes,
+                         strong_labels,
+                         oam_bboxes,
+                         oam_labels,
+                         img_metas,
+                         gt_bboxes_ignore=None,
+                               ):
+        if self.with_bbox or self.with_mask:
+            pass
+
+                # assign_result = self.bbox_assigner.assign(
+                #     proposal_list[i], gt_bboxes[i], gt_bboxes_ignore[0],
+                #     gt_labels[i])
+                # sampling_result = self.bbox_sampler.sample(
+                #     assign_result,
+                #     proposal_list[i],
+                #     gt_bboxes[i],
+                #     gt_labels[i],
+                #     feats=[lvl_feat[i][None] for lvl_feat in x])
+                # sampling_results.append(sampling_result)
+
+        return 0
+    #duyu
     def _bbox_forward_train_second_pass(self, x, sampling_results, gt_bboxes, gt_labels,
-                            img_metas):
+                            img_metas,gt_bboxes_ignore=None):
         """Run forward function and calculate loss for box head in training."""
         torch_device = gt_labels[0].get_device()
 
@@ -450,8 +495,8 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                               bbox_results_strong_branch1['bbox_pred'], rois_strong,
                                                               *bbox_targets_strong)
         loss_strong_branch1 = dict()
-        loss_strong_branch1['loss_cls_strong_branch1_sp'] = loss_bbox_strong_branch1['loss_cls_strong']*0
-        loss_strong_branch1['loss_bbox_strong_branch1_sp'] = loss_bbox_strong_branch1['loss_bbox_strong']*0
+        loss_strong_branch1['loss_cls_strong_branch1_sp'] = loss_bbox_strong_branch1['loss_cls_strong']
+        loss_strong_branch1['loss_bbox_strong_branch1_sp'] = loss_bbox_strong_branch1['loss_bbox_strong']
         loss_strong_branch1['acc_strong_branch1_sp'] = loss_bbox_strong_branch1['acc_strong']
         bbox_results_strong_branch1.update(loss_bbox_strong_branch1_sp=loss_strong_branch1)
         #calculate loss_weak_branch1
@@ -459,12 +504,16 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                        [gt_labels[1]], self.train_cfg)
         bbox_results_weak_pseudo = self._bbox_forward_strong_branch1(bbox_feats_weak)
         bbox_results_weak_branch1 = self._bbox_forward_weak(bbox_feats_weak)
+        # loss_bbox_weak_branch1 = self.bbox_head.loss_weak(bbox_results_weak_branch1['cls_proposal_mat'],
+        #                                               rois_weak,
+        #                                               *bbox_targets_weak_branch1)
+        img_level_label, label_weights = convert_label(gt_labels[1], bbox_results_weak_branch1['cls_proposal_mat'].size(1))
         loss_bbox_weak_branch1 = self.bbox_head.loss_weak(bbox_results_weak_branch1['cls_proposal_mat'],
-                                                      rois_weak,
-                                                      *bbox_targets_weak_branch1)
-
+                                                          img_level_label,
+                                                          label_weights,
+                                                          )
         loss_weak_branch1 = dict()
-        loss_weak_branch1['loss_img_level_sp'] = loss_bbox_weak_branch1['loss_img_level']*0
+        loss_weak_branch1['loss_img_level_sp'] = loss_bbox_weak_branch1['loss_img_level']
         bbox_results_weak_branch1.update(loss_bbox_weak_branch1_sp=loss_weak_branch1)
         #generate oam labels for weak image
         img_level_label, label_weights = convert_label(gt_labels[1], bbox_results_weak_pseudo['cls_score'].size(1) - 1)
@@ -477,7 +526,8 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                                  )
         # print('oam_labels_second_pass: ',oam_labels_weak)
         #TODO contrastive_losses
-        contrastive_losses = self.contrast_head.forward_train(bbox_feats_strong,bbox_feats_weak,gt_bboxes[0],gt_labels[0],oam_bboxes_weak,oam_labels_weak)
+        contrastive_losses = self.contrast_forward_train(x_strong,x_weak,gt_bboxes[0],gt_labels[0],oam_bboxes_weak,
+                                                         oam_labels_weak,img_metas,gt_bboxes_ignore=gt_bboxes_ignore)
         #calculate loss_strong_branch2
         bbox_results_strong_branch2 = self._bbox_forward_strong_branch2(bbox_feats_strong)
         loss_bbox_strong_branch2 = self.bbox_head.loss_strong(bbox_results_strong_branch2['cls_score'],
@@ -499,15 +549,15 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         acc_weak = accuracy(bbox_results_weak_branch2['cls_score'],labels)
 
         loss_bbox_weak_branch2 = dict()
-        loss_bbox_weak_branch2 = self.bbox_head.loss_strong(bbox_results_weak_branch2['cls_score'],
-                                                              bbox_results_weak_branch2['bbox_pred'],
-                                                              rois_weak,
-                                                              *bbox_targets_weak_branch1)
-        # loss_bbox_weak_branch2['loss_cls_weak_branch2'] = self.bbox_head.loss_cls(bbox_results_weak_branch2['cls_score'], labels,
-        #                                                      label_weights,
-        #                                                      avg_factor=avg_factor,
-        #                                                      reduction_override=None)
-        # loss_bbox_weak_branch2['acc_weak_branch2'] = acc_weak
+        # loss_bbox_weak_branch2 = self.bbox_head.loss_strong(bbox_results_weak_branch2['cls_score'],
+        #                                                       bbox_results_weak_branch2['bbox_pred'],
+        #                                                       rois_weak,
+        #                                                       *bbox_targets_weak_branch1)
+        loss_bbox_weak_branch2['loss_cls_weak_branch2'] = self.bbox_head.loss_cls(bbox_results_weak_branch2['cls_score'], labels,
+                                                             label_weights,
+                                                             avg_factor=avg_factor,
+                                                             reduction_override=None)
+        loss_bbox_weak_branch2['acc_weak_branch2'] = acc_weak
         bbox_results_weak_branch2.update(loss_bbox_weak_branch2=loss_bbox_weak_branch2)
 
         return bbox_results_weak_branch1,bbox_results_strong_branch1,bbox_results_weak_branch2,bbox_results_strong_branch2,contrastive_losses

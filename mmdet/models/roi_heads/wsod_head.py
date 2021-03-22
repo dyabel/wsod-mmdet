@@ -171,12 +171,12 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                               gt_labels,
                               gt_bboxes_ignore=None,
                               gt_masks=None):
-        losses_first_pass,oam_bboxes,oam_labels = self.forward_train_first_pass(x,img_metas,proposal_list,gt_bboxes,gt_labels,gt_bboxes_ignore,
-                                                       gt_masks=None)
-        losses_second_pass = self.forward_train_second_pass(x,img_metas,oam_bboxes,gt_bboxes,gt_labels,gt_bboxes_ignore,
+        # losses_first_pass,oam_bboxes,oam_labels = self.forward_train_first_pass(x,img_metas,proposal_list,gt_bboxes,gt_labels,gt_bboxes_ignore,
+        #                                                gt_masks=None)
+        losses_second_pass = self.forward_train_second_pass(x,img_metas,proposal_list,gt_bboxes,gt_labels,gt_bboxes_ignore,
                                                                              gt_masks=None)
         losses = dict()
-        losses.update(losses_first_pass)
+        # losses.update(losses_first_pass)
         losses.update(losses_second_pass)
         return losses
     #duyu
@@ -258,21 +258,37 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                               gt_masks=None):
         if self.with_bbox or self.with_mask:
             num_imgs = len(img_metas)
+
             if gt_bboxes_ignore is None:
                 gt_bboxes_ignore = [None for _ in range(num_imgs)]
             sampling_results = []
-            for i in range(num_imgs):
-                assign_result = self.bbox_assigner.assign(
-                    proposal_list[i], gt_bboxes[i], gt_bboxes_ignore[i],
-                    gt_labels[i])
-                sampling_result = self.bbox_sampler.sample(
-                    assign_result,
-                    proposal_list[i],
-                    gt_bboxes[i],
-                    gt_labels[i],
-                    feats=[lvl_feat[i][None] for lvl_feat in x])
-                sampling_results.append(sampling_result)
+            assert num_imgs == 2
+            # assign for strong image
+            assign_result = self.bbox_assigner.assign(
+                proposal_list[0], gt_bboxes[0], gt_bboxes_ignore[0],
+                gt_labels[0])
+            sampling_result = self.bbox_sampler.sample(
+                assign_result,
+                proposal_list[0],
+                gt_bboxes[0],
+                gt_labels[0],
+                feats=[lvl_feat[0][None] for lvl_feat in x])
+            sampling_results.append(sampling_result)
 
+            # assign for weak image
+            assign_result = self.bbox_assigner.assign(
+                proposal_list[1], gt_bboxes[1], gt_bboxes_ignore[0],
+                gt_labels=None)
+            sampling_result = self.bbox_sampler.sample(
+                assign_result,
+                proposal_list[1],
+                gt_bboxes[1],
+                gt_labels=None,
+                feats=[lvl_feat[1][None] for lvl_feat in x])
+
+            sampling_results.append(sampling_result)
+        # print('#' * 100)
+        # print(sampling_results)
         losses = dict()
         # bbox head forward and loss
         if self.with_bbox:
@@ -424,8 +440,8 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
 
         bbox_targets_strong = self.bbox_head.get_targets([sampling_results[0]], [gt_bboxes[0]],
                                                   [gt_labels[0]], self.train_cfg)
-        bbox_targets_weak = self.bbox_head.get_targets([sampling_results[1]], [gt_bboxes[1]],
-                                                         [gt_labels[1]], self.train_cfg)
+        # bbox_targets_weak = self.bbox_head.get_targets([sampling_results[1]], [gt_bboxes[1]],
+        #                                                  [gt_labels[1]], self.train_cfg)
 
         bbox_results_strong_branch1 = self._bbox_forward_strong_branch1(bbox_feats_strong)
         bbox_results_weak_pseudo = self._bbox_forward_strong_branch1(bbox_feats_weak)
@@ -434,9 +450,11 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         loss_bbox_strong_branch1 = self.bbox_head.loss_strong(bbox_results_strong_branch1['cls_score'],
                                         bbox_results_strong_branch1['bbox_pred'], rois_strong,
                                         *bbox_targets_strong)
+        img_level_label, label_weights = convert_label(gt_labels[1], bbox_results_weak_branch1['cls_proposal_mat'].size(1))
         loss_bbox_weak_branch1 = self.bbox_head.loss_weak(bbox_results_weak_branch1['cls_proposal_mat'],
-                                                      rois_weak,
-                                                      *bbox_targets_weak)
+                                                        img_level_label,
+                                                        label_weights,
+                                                        )
 
         loss_strong_branch1 = dict()
         loss_strong_branch1['loss_cls_strong_branch1_sp'] = loss_bbox_strong_branch1['loss_cls_strong']

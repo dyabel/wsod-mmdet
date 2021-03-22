@@ -140,7 +140,6 @@ def collect_results_cpu(result_part, size, tmpdir=None):
         mmcv.mkdir_or_exist(tmpdir)
     # dump the part result to the dir
     mmcv.dump(result_part, osp.join(tmpdir, f'part_{rank}.pkl'))
-    print_log('rank %d dumped'%rank)
     time.sleep(2)
     dist.barrier()
     # collect all parts

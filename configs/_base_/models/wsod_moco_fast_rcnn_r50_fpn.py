@@ -38,11 +38,17 @@ model = dict(
             loss_cls_weak=dict(
                 type='MyCrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
             loss_bbox=dict(type='SmoothL1Loss', loss_weight=1.0)),
-    contrast_head=dict(
-            type='BaseContrastHead'
-    )
-    ),
-    # model training and testing settings
+        contrast_head=dict(
+            type='BaseContrastHead',
+            encoder_k=dict(
+                type='BaseEncoderHead'
+                ),
+            encoder_q=dict(
+                type='BaseEncoderHead'
+                )
+                        )
+),
+# model training and testing settings
     train_cfg=dict(
         rcnn=dict(
             assigner=dict(
