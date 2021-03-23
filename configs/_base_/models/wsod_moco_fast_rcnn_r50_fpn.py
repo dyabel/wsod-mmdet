@@ -45,7 +45,8 @@ model = dict(
                 ),
             encoder_q=dict(
                 type='BaseEncoderHead'
-                )
+                ),
+            loss = dict(type='CrossEntropyLoss',use_sigmoid=False,loss_weight=1.0)
                         )
 ),
 # model training and testing settings

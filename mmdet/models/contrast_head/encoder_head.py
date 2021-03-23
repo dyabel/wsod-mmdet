@@ -12,32 +12,23 @@ from PIL import ImageFilter
 import random
 import torch
 from pytorch_metric_learning.utils import logging_presets
-from pytorch_metric_learning import losses, miners
 import record_keeper
 device = torch.device("cuda")
-
 @HEADS.register_module()
 class BaseEncoderHead(nn.Module, metaclass=ABCMeta):
     "Base class for Encoder_Head"
     def __init__(self, feature_dim=128, arch='resnet18', bn_splits=8):
         super(BaseEncoderHead, self).__init__()
-
         # use split batchnorm
         norm_layer = partial(SplitBatchNorm, num_splits=bn_splits) if bn_splits > 1 else torch.nn.BatchNorm2d
-        resnet_arch = getattr(resnet, arch)
-        net = resnet_arch(num_classes=feature_dim, norm_layer=norm_layer)
-
-        self.net = []
-        for name, module in net.named_children():
-            if name == 'conv1':
-                module = torch.nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
-            if isinstance(module, torch.nn.MaxPool2d):
-                continue
-            if isinstance(module, torch.nn.Linear):
-                self.net.append(torch.nn.Flatten(1))
-            self.net.append(module)
-
-        self.net = torch.nn.Sequential(*self.net)
+        self.net = nn.Sequential(
+                        # nn.Dropout(),
+                        nn.Linear(1024, 512),
+                        # nn.MaxPool1d(kernel_size=2, stride=2),
+                        nn.ReLU(True),
+                        nn.Linear(512, 256),
+                        nn.ReLU(True),
+                        nn.Linear(256, 128))
 
 
     def forward(self, x):

@@ -13,6 +13,8 @@ import sys
 from multiprocessing import Process
 import os
 import mmcv
+import skimage.io
+import selective_search
 import json
 path_prefix = '../../data/VOCdevkit/VOC2012/'
 mode = 'train'
@@ -34,27 +36,18 @@ def work(begin_line,end_line):
             if inner_cnt % 10 == 0:
                 print('process %d gone %d'%(begin_line,inner_cnt))
             img_name = line.strip() + '.jpg'
-            im = cv.imread(path_prefix + 'JPEGImages/' + img_name)
-            # im = cv.imread(path_prefix + 'train2017/' + img_name)
-            edge_detection = cv.ximgproc.createStructuredEdgeDetection(model)
-            rgb_im = cv.cvtColor(im, cv.COLOR_BGR2RGB)
-            edges = edge_detection.detectEdges(np.float32(rgb_im) / 255.0)
-
-            orimap = edge_detection.computeOrientation(edges)
-            edges = edge_detection.edgesNms(edges, orimap)
-
-            edge_boxes = cv.ximgproc.createEdgeBoxes()
-            edge_boxes.setMaxBoxes(1000)
-            boxes = edge_boxes.getBoundingBoxes(edges, orimap)
-
+            image = skimage.io.imread(path_prefix + 'JPEGImages/' + img_name)
+            boxes = selective_search.selective_search(image, mode='fast', random_sort=False)
             proposals = []
-            for i,b in enumerate(boxes[0]):
-                # print(b)
-                x, y, w, h = b
-                proposals.append([x,y,w,h,boxes[1][i]])
-            print(len(proposals))
+            # print(len(boxes))
+            boxes_filter = selective_search.box_filter(boxes, min_size=20, topN=1000)
+            for box in boxes_filter:
+                proposal = list(box)
+                proposal.append(1)
+                proposals.append(proposal)
             proposals_list.append(proposals)
-    mmcv.dump(proposals_list,'../../edgebox_dump_dir12/'+str(begin_line)+mode+'.pkl')
+
+    mmcv.dump(proposals_list,'../../ss_dump_dir12/'+str(begin_line)+mode+'.pkl')
 
 if __name__ == '__main__':
     print(os.cpu_count())

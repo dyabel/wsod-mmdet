@@ -5,9 +5,6 @@ from .cornernet import CornerNet
 from .detr import DETR
 from .fast_rcnn import FastRCNN
 from .faster_rcnn import FasterRCNN
-# from .oicr_copy import OICR
-from .oicr import OICR
-from .oicr_moco import OICRMOCO
 from .fcos import FCOS
 from .fovea import FOVEA
 from .fsaf import FSAF
@@ -30,11 +27,12 @@ from .vfnet import VFNet
 from .yolact import YOLACT
 from .yolo import YOLOV3
 from .wsod import WSOD
+from .wsod_faster import WSOD_RPN
 
 __all__ = [
     'ATSS', 'BaseDetector', 'SingleStageDetector', 'TwoStageDetector', 'RPN',
-    'FastRCNN', 'FasterRCNN','OICR', 'MaskRCNN', 'CascadeRCNN', 'HybridTaskCascade',
+    'FastRCNN', 'FasterRCNN', 'MaskRCNN', 'CascadeRCNN', 'HybridTaskCascade',
     'RetinaNet', 'FCOS', 'GridRCNN', 'MaskScoringRCNN', 'RepPointsDetector',
     'FOVEA', 'FSAF', 'NASFCOS', 'PointRend', 'GFL', 'CornerNet', 'PAA',
-    'YOLOV3', 'YOLACT', 'VFNet', 'DETR', 'TridentFasterRCNN', 'SparseRCNN', 'OICRMOCO','WSOD'
+    'YOLOV3', 'YOLACT', 'VFNet', 'DETR', 'TridentFasterRCNN', 'SparseRCNN', 'WSOD','WSOD_RPN'
 ]

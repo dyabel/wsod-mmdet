@@ -26,7 +26,7 @@ if __name__ == '__main__':
     with open(path_prefix + mode+'.txt', 'r') as f:
         total_num = len(f.readlines())
 
-    model = '../../model.yml.gz'
+
     # im = cv.imread(sys.argv[2])
     cnt = 0
     process_list = []
@@ -35,13 +35,13 @@ if __name__ == '__main__':
     proposals_list_concat_raw = []
     proposals_list_concat = []
     for i in range(pro_num+1):
-        proposals_list = mmcv.load('../../edgebox_dump_dir12/' + str(i*le) + mode+'.pkl')
+        proposals_list = mmcv.load('../../ss_dump_dir12/' + str(i*le) + mode+'.pkl')
         proposals_list_concat_raw.extend(proposals_list)
     for proposals_list in proposals_list_concat_raw:
         proposals_list_concat.append(np.array(proposals_list,dtype=np.float32))
     print(proposals_list_concat[0].shape)
 
-    mmcv.dump(proposals_list_concat,'../../data/VOCdevkit/proposals/edgebox_voc_'+mode+'_12.pkl')
+    mmcv.dump(proposals_list_concat,'../../data/VOCdevkit/proposals/ss_voc_'+mode+'_12.pkl')
 
 
 

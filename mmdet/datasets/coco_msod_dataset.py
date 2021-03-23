@@ -523,10 +523,11 @@ class CoCoMsodDataset(CustomDataset):
             print('error')
         if self.id_labelattr[img_info['id']]:
             results['strong_label'] = True
-        elif self.id_labelattr[img_info['id']]:
-            results['strong_label'] = False
-        else:
-            results['strong_label'] = False
+        # elif self.id_labelattr[img_info['id']]:
+        #     results['strong_label'] = False
+        # else:
+        #     results['strong_label'] = False
+        results['num_cls'] = self.num_classes
         # if not results['strong_label']:
         #     labels = results['gt_labels'].data
         #     label_img_level = torch.zeros(self.num_classes)

@@ -148,6 +148,8 @@ class WSOD(BaseDetector):
         Returns:
             dict[str, Tensor]: a dictionary of loss components
         """
+        # print('*'*100)
+        # print(gt_labels)
         x = self.extract_feat(img)
         losses = dict()
         gt_bboxes[1] = proposals[1]

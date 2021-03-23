@@ -86,14 +86,11 @@ class WsodDistributedGroupSampler(Sampler):
         self.group_sizes = np.bincount(self.flag)
 
         self.num_samples = 0
-        # print_log('group_sizes')
-        # print_log(self.group_sizes)
         for i, j in enumerate(self.group_sizes):
             self.num_samples += int(
                 math.ceil(self.group_sizes[i] * 1.0 / self.samples_per_gpu /
                           self.num_replicas)) * self.samples_per_gpu
         self.total_size = self.num_samples * self.num_replicas
-        print('rank',self.rank,self.num_samples)
 
     def __iter__(self):
         # indices = self.dataset.indices
