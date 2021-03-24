@@ -15,10 +15,8 @@ from .xml_style import XMLDataset
 # from .voc_msod_dataset_copy import VocMsodDataset
 from .coco_msod_dataset import CoCoMsodDataset
 from .msod_dataset import MsodDataset
-from .voc_msod_dataset_iter import VocMsodDatasetIter
 from .voc_msod_dataset import VocMsodDataset
 from .voc_msod_dataset_val import VocMsodDatasetVal
-from .voc_msod import VocMsod
 from .vocdataset import VocDataset
 
 __all__ = [
@@ -28,5 +26,5 @@ __all__ = [
     'DistributedSampler', 'build_dataloader', 'ConcatDataset', 'RepeatDataset',
     'ClassBalancedDataset', 'WIDERFaceDataset', 'DATASETS', 'PIPELINES',
     'build_dataset', 'replace_ImageToTensor', 'get_loading_pipeline','CoCoMsodDataset','VocMsodDataset',
-    'MsodDataset','VocMsodDatasetIter','VocMsodDatasetVal','VocMsod','VocDataset'
+    'MsodDataset','VocMsodDatasetVal','VocDataset'
 ]
