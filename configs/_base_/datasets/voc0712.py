@@ -1,5 +1,6 @@
 # dataset settings
 dataset_type = 'VOCDataset'
+#data_root = 'data/VOCdevkit/'
 data_root = '../data/VOCdevkit/'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
@@ -32,30 +33,24 @@ data = dict(
     samples_per_gpu=2,
     workers_per_gpu=2,
     train=dict(
-        type=dataset_type,
-        ann_file=[
-            data_root + 'VOC2007/ImageSets/Main/trainval.txt',
-            data_root + 'VOC2012/ImageSets/Main/train.txt'
-        ],
-        img_prefix=[data_root + 'VOC2007/', data_root + 'VOC2012/'],
-        pipeline=train_pipeline),
+        type='RepeatDataset',
+        times=3,
+        dataset=dict(
+            type=dataset_type,
+            ann_file=[
+                data_root + 'VOC2007/ImageSets/Main/trainval.txt',
+                data_root + 'VOC2012/ImageSets/Main/trainval.txt'
+            ],
+            img_prefix=[data_root + 'VOC2007/', data_root + 'VOC2012/'],
+            pipeline=train_pipeline)),
     val=dict(
         type=dataset_type,
-        ann_file=[
-            data_root + 'VOC2007/ImageSets/Main/test.txt',
-            data_root + 'VOC2012/ImageSets/Main/val.txt'
-        ],
-        img_prefix=[data_root + 'VOC2007/', data_root + 'VOC2012/'],
+        ann_file=data_root + 'VOC2007/ImageSets/Main/test.txt',
+        img_prefix=data_root + 'VOC2007/',
         pipeline=test_pipeline),
     test=dict(
         type=dataset_type,
-        ann_file=[
-            data_root + 'VOC2007/ImageSets/Main/test.txt',
-            data_root + 'VOC2012/ImageSets/Main/val.txt'
-        ],
-        img_prefix=[data_root + 'VOC2007/', data_root + 'VOC2012/'],
-        pipeline=test_pipeline)
-        )
-
-
+        ann_file=data_root + 'VOC2007/ImageSets/Main/test.txt',
+        img_prefix=data_root + 'VOC2007/',
+        pipeline=test_pipeline))
 evaluation = dict(interval=1, metric='mAP')

@@ -1,5 +1,6 @@
 dataset_type = 'VocMsodDataset'
-data_root = '../data/VOCdevkit/'
+data_root = '../data/VOCdevkit/VOC2012/'
+# data_root = '../data/VOCdevkit/'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 train_pipeline = [
@@ -46,3 +47,4 @@ data = dict(
         ann_file=data_root + 'val.json',
         img_prefix=data_root + 'JPEGImages',
         pipeline=test_pipeline))
+evaluation = dict(interval=1, metric='mAP')
