@@ -101,7 +101,7 @@ class EmbedRandomSampler(EmbedBaseSampler):
         occupied_inds = occupied_inds.unique()
         occupied_inds_sup = occupied_inds.new_full((assign_result.gt_inds.shape[0],),-1)
         occupied_inds_sup[occupied_inds] = occupied_inds
-        neg_inds = all_inds[(occupied_inds_sup==-1).nonzero()]
+        neg_inds = all_inds[(occupied_inds_sup==-1).nonzero(as_tuple=False)]
 
 
         #neg_inds = torch.nonzero((assign_result.gt_inds == 0) & (assign_result.hard_neg_gt_inds==-1), as_tuple=False)

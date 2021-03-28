@@ -200,7 +200,7 @@ class EmbedRoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
 
 
         all_bbox_labels = bbox_targets[0]
-        pos_roi_labels, pos_roi_id = all_bbox_labels[(all_bbox_labels!=self.bbox_head.num_classes).nonzero()],(all_bbox_labels!=self.bbox_head.num_classes).nonzero()
+        pos_roi_labels, pos_roi_id = all_bbox_labels[(all_bbox_labels!=self.bbox_head.num_classes).nonzero(as_tuple=False)],(all_bbox_labels!=self.bbox_head.num_classes).nonzero(as_tuple=False)
         pos_roi_id = pos_roi_id.squeeze(1)
         pos_roi_labels = pos_roi_labels.squeeze(1)
 

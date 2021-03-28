@@ -315,12 +315,13 @@ class EmbedHead(BBoxHead):
 
         #print('Computing cosine distance!!!')
         # cos distance
-        #pos_cos_dist = self.cos_distance(norm_pos_feat,norm_pos_reps)
-        #neg_cos_dist = self.cos_distance(norm_neg_feat,norm_neg_reps)
+        pos_cos_dist = self.cos_distance(norm_pos_feat,norm_pos_reps)
+        neg_cos_dist = self.cos_distance(norm_neg_feat,norm_neg_reps)
 
         #Eculid distance
-        pos_cos_dist = self.euclid_distance(norm_pos_feat,norm_pos_reps)
-        neg_cos_dist = self.euclid_distance(norm_neg_feat,norm_neg_reps)
+        # print('Computing Eculid distance!!!')
+        # pos_cos_dist = self.euclid_distance(norm_pos_feat,norm_pos_reps)
+        # neg_cos_dist = self.euclid_distance(norm_neg_feat,norm_neg_reps)
 
         min_pos_dist_cls, arg_min_pos_dist_cls = pos_cos_dist.min(dim=2)
         min_neg_dist_cls, arg_min_neg_dist_cls = neg_cos_dist.min(dim=2)
@@ -366,7 +367,6 @@ class EmbedHead(BBoxHead):
 
         min_pos_pos_dist = min_pos_dist_cls[pos_roi_id]
         min_neg_neg_dist = min_neg_dist_cls[hard_neg_roi_id]
-
 
         return cls_score, bbox_pred, min_pos_pos_dist, min_neg_neg_dist
         #return cls_score, bbox_pred, final_pos_reps, final_neg_reps, pos_feats_embed, hard_neg_feats_embed

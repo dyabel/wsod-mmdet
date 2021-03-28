@@ -271,6 +271,119 @@ class ConvFCWSODHead(BBoxHead):
         cls_score = self.fc_cls_branch2(x_cls) if self.with_cls else None
         bbox_pred = self.fc_reg_branch2(x_reg) if self.with_reg else None
         return cls_score, bbox_pred
+    #yangyk
+    def forward_embedding(self, x, hard_neg_roi_id=None, pos_roi_id=None):
+        # shared part
+        if self.num_shared_convs > 0:
+            for conv in self.shared_convs:
+                x = conv(x)
+
+        if self.num_shared_fcs > 0:
+            if self.with_avg_pool:
+                x = self.avg_pool(x)
+
+            x = x.flatten(1)
+
+            for fc in self.shared_fcs:
+                x = self.relu(fc(x))
+        # separate branches
+        x_cls = x
+        x_reg = x
+
+        for conv in self.cls_convs:
+            x_cls = conv(x_cls)
+        if x_cls.dim() > 2:
+            if self.with_avg_pool:
+                x_cls = self.avg_pool(x_cls)
+            x_cls = x_cls.flatten(1)
+        for fc in self.cls_fcs:
+            x_cls = self.relu(fc(x_cls))
+
+        for conv in self.reg_convs:
+            x_reg = conv(x_reg)
+        if x_reg.dim() > 2:
+            if self.with_avg_pool:
+                x_reg = self.avg_pool(x_reg)
+            x_reg = x_reg.flatten(1)
+        for fc in self.reg_fcs:
+            x_reg = self.relu(fc(x_reg))
+
+        # yangyk
+        pos_feat = self.pos_cls_fcs[0](x_cls)
+        neg_feat = self.neg_cls_fcs[0](x_cls)
+
+        pos_one = torch.ones(1, device=pos_feat.device)
+        neg_one = torch.ones(1, device=neg_feat.device)
+
+        pos_reps = self.pos_rep_fc[0](pos_one)
+        neg_reps = self.pos_rep_fc[0](neg_one)
+
+        pos_reps = torch.reshape(pos_reps, [self.base_classes, self.pos_vec_length, self.reps_per_class])
+        neg_reps = torch.reshape(neg_reps, [self.base_classes, self.neg_vec_length, self.reps_per_class])
+
+        norm_pos_reps = torch.nn.functional.normalize(pos_reps, p=2, dim=1)
+        norm_neg_reps = torch.nn.functional.normalize(neg_reps, p=2, dim=1)
+
+        norm_pos_feat = torch.nn.functional.normalize(pos_feat, p=2, dim=1)
+        norm_neg_feat = torch.nn.functional.normalize(neg_feat, p=2, dim=1)
+
+        # norm_pos_feat = torch.reshape(norm_pos_feat,[norm_pos_feat.shape[0],norm_pos_feat.shape[1],1])
+        # norm_neg_feat = torch.reshape(norm_neg_feat,[norm_neg_feat.shape[0],norm_neg_feat.shape[1],1])
+
+        # print('Computing cosine distance!!!')
+        # cos distance
+        pos_cos_dist = self.cos_distance(norm_pos_feat, norm_pos_reps)
+        neg_cos_dist = self.cos_distance(norm_neg_feat, norm_neg_reps)
+
+        # Eculid distance
+        # print('Computing Eculid distance!!!')
+        # pos_cos_dist = self.euclid_distance(norm_pos_feat,norm_pos_reps)
+        # neg_cos_dist = self.euclid_distance(norm_neg_feat,norm_neg_reps)
+
+        min_pos_dist_cls, arg_min_pos_dist_cls = pos_cos_dist.min(dim=2)
+        min_neg_dist_cls, arg_min_neg_dist_cls = neg_cos_dist.min(dim=2)
+
+        beta = 0.2
+        gamma = 0.4
+        min_np_dist_cls = min_pos_dist_cls - beta * min_neg_dist_cls + gamma
+
+        min_np_probs_cls = torch.exp(-2 * min_np_dist_cls)
+        max_fore_prob_cls, _ = torch.max(min_np_probs_cls, dim=1)
+        # cos scalor first experiment
+        # bg_scalor = 0.5
+        bg_scalor = 0.2
+        bg_prob = 1. - bg_scalor * max_fore_prob_cls
+
+        cls_score = torch.cat((min_np_probs_cls, bg_prob.unsqueeze(1)), dim=1)
+
+        # cls_score = self.fc_cls(x_cls) if self.with_cls else None
+        bbox_pred = self.fc_reg(x_reg) if self.with_reg else None
+
+        '''
+        final_pos_reps = norm_pos_reps
+        final_neg_reps = norm_neg_reps
+
+
+        #pos_feats
+        if pos_roi_id is not None:
+            pos_feats_embed = norm_pos_feat[pos_roi_id]
+        else:
+            pos_feats_embed = None
+
+        #neg_feats
+        if hard_neg_roi_id is not None:
+            hard_neg_feats_embed = norm_neg_feat[hard_neg_roi_id]
+        else:
+            hard_neg_feats_embed = None
+
+        min_pos_pos_dist = min_pos_dist_cls[pos_roi_id]
+        min_neg_neg_dist = min_neg_dist_cls[hard_neg_roi_id]
+        '''
+
+        min_pos_pos_dist = min_pos_dist_cls[pos_roi_id]
+        min_neg_neg_dist = min_neg_dist_cls[hard_neg_roi_id]
+
+        return cls_score, bbox_pred, min_pos_pos_dist, min_neg_neg_dist
 
     @force_fp32(apply_to='cls_proposal_mat')
     def loss_weak(self,
@@ -346,6 +459,93 @@ class ConvFCWSODHead(BBoxHead):
                 losses['loss_bbox_strong'] = bbox_pred[pos_inds].sum()
         return losses
 
+    #yangyk
+    @force_fp32(apply_to=('cls_score', 'bbox_pred'))
+    def loss_strong1(self,
+             cls_score,
+             bbox_pred,
+             rois,
+             labels,
+             label_weights,
+             bbox_targets,
+             bbox_weights,
+             reduction_override=None,
+             min_pos_pos_dist=None,
+             min_neg_neg_dist=None,
+             pos_roi_labels=None,
+             hard_neg_roi_labels=None
+             ):
+        losses = dict()
+        if cls_score is not None:
+            avg_factor = max(torch.sum(label_weights > 0).float().item(), 1.)
+            if cls_score.numel() > 0:
+                losses['loss_cls_strong'] = self.loss_cls(
+                    cls_score,
+                    labels,
+                    label_weights,
+                    avg_factor=avg_factor,
+                    reduction_override=reduction_override)
+                losses['acc_strong'] = accuracy(cls_score, labels)
+        if bbox_pred is not None:
+            bg_class_ind = self.num_classes
+            # 0~self.num_classes-1 are FG, self.num_classes is BG
+            pos_inds = (labels >= 0) & (labels < bg_class_ind)
+            # do not perform bounding box regression for BG anymore.
+            if pos_inds.any():
+                if self.reg_decoded_bbox:
+                    # When the regression loss (e.g. `IouLoss`,
+                    # `GIouLoss`, `DIouLoss`) is applied directly on
+                    # the decoded bounding boxes, it decodes the
+                    # already encoded coordinates to absolute format.
+                    bbox_pred = self.bbox_coder.decode(rois[:, 1:], bbox_pred)
+                if self.reg_class_agnostic:
+                    pos_bbox_pred = bbox_pred.view(
+                        bbox_pred.size(0), 4)[pos_inds.type(torch.bool)]
+                else:
+                    pos_bbox_pred = bbox_pred.view(
+                        bbox_pred.size(0), -1,
+                        4)[pos_inds.type(torch.bool),
+                           labels[pos_inds.type(torch.bool)]]
+                losses['loss_bbox_strong'] = self.loss_bbox(
+                    pos_bbox_pred,
+                    bbox_targets[pos_inds.type(torch.bool)],
+                    bbox_weights[pos_inds.type(torch.bool)],
+                    avg_factor=bbox_targets.size(0),
+                    reduction_override=reduction_override)
+            else:
+                losses['loss_bbox_strong'] = bbox_pred[pos_inds].sum()
+
+
+            if pos_roi_labels is not None:
+                min_pos_pos_correct_cls = min_pos_pos_dist.new_full((pos_roi_labels.shape[0], ), -1 ,dtype=min_pos_pos_dist.dtype)
+
+                for i, _ in enumerate(min_pos_pos_correct_cls):
+                    #print(i)
+                    min_pos_pos_correct_cls[i] = min_pos_pos_dist[i,pos_roi_labels[i]]
+
+                min_pos_pos_avg_dist = min_pos_pos_correct_cls.mean()
+
+            else:
+                min_pos_pos_avg_dist = 0
+
+
+
+
+            if hard_neg_roi_labels is not None:
+                min_neg_neg_correct_cls = min_neg_neg_dist.new_full((hard_neg_roi_labels.shape[0], ), -1 ,dtype=min_neg_neg_dist.dtype)
+
+                for i, _ in enumerate(min_neg_neg_correct_cls):
+                    min_neg_neg_correct_cls[i] = min_neg_neg_dist[i,hard_neg_roi_labels[i]]
+
+                min_neg_neg_avg_dist = min_neg_neg_correct_cls.mean()
+
+            else:
+                min_neg_neg_avg_dist = 0
+
+
+            losses['loss_embed_strong'] = min_pos_pos_avg_dist + min_neg_neg_avg_dist
+
+        return losses
 
 @HEADS.register_module()
 class Shared2FCWSODHead(ConvFCWSODHead):

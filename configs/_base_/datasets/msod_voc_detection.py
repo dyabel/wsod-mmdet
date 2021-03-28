@@ -32,6 +32,9 @@ data = dict(
     samples_per_gpu=2,
     workers_per_gpu=2,
     train=dict(
+        type='RepeatDataset',
+        times=3,
+        dataset=dict(
         type=dataset_type,
         ann_file=[data_root + 'VOC2007/trainval.json',
                   data_root + 'VOC2012/trainval.json'
@@ -40,7 +43,7 @@ data = dict(
                     data_root + 'VOC2012/JPEGImages'
                     ],
         weak_ann_frac=5,
-        pipeline=train_pipeline),
+        pipeline=train_pipeline)),
     val=dict(
         type='VocMsodDatasetVal',
         ann_file=data_root + 'VOC2007/test.json',

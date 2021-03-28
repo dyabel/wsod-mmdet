@@ -1,18 +1,8 @@
 from abc import ABCMeta,abstractmethod
 import torch.nn as nn
-from ..builder import HEADS, build_head, build_roi_extractor
+from ..builder import HEADS, build_head
 from functools import partial
 import torch
-from torchvision.models import resnet
-from tqdm import tqdm
-import logging
-import os
-from torchvision import transforms, datasets
-from PIL import ImageFilter
-import random
-import torch
-from pytorch_metric_learning.utils import logging_presets
-import record_keeper
 device = torch.device("cuda")
 @HEADS.register_module()
 class BaseEncoderHead(nn.Module, metaclass=ABCMeta):
@@ -33,6 +23,7 @@ class BaseEncoderHead(nn.Module, metaclass=ABCMeta):
 
     def forward(self, x):
         x = self.net(x)
+        x = torch.sigmoid(x)
         # note: not normalized here
         return x
 

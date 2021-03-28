@@ -31,8 +31,9 @@ class BaseContrastHead(nn.Module, metaclass=ABCMeta):
         super(BaseContrastHead,self).__init__()
         self.init_encoder(encoder_k,encoder_q)
         self.queue = torch.tensor([])
+        self.queue_labels = torch.tensor([])
         self.batch_size = 0
-        self.max_size = 1024
+        self.max_size = 512
         # self.loss_fn = losses.CrossBatchMemory(loss = losses.NTXentLoss(temperature = 0.1),
         #                           embedding_size = embedding_size,
         #                           memory_size = memory_size)
@@ -54,53 +55,51 @@ class BaseContrastHead(nn.Module, metaclass=ABCMeta):
         torch_device = strong_labels.get_device()
         q_batch = torch.tensor([]).to(torch_device)
         k_batch = torch.tensor([]).to(torch_device)
+        k_labels = torch.tensor([]).to(torch_device)
         for i,weak_label in enumerate(weak_labels):
             if weak_label in strong_labels:
                 num_strong = len(torch.where(strong_labels==weak_label)[0])
-                index_strong = torch.where(strong_labels==weak_label)[0][torch.where(torch.where(weak_labels==weak_label)[0]==i)[0][0]%num_strong]
-                # print('index_strong:',index_strong)
+                index_strong = torch.where(strong_labels==weak_label)[0]\
+                    [torch.where(torch.where(weak_labels==weak_label)[0]==i)[0][0]%num_strong]
                 q = self.encoder_q(feats_weak[i])
                 q_batch = torch.cat((q_batch,q.view(1,-1)),0)
-                # print('q:',q.size())
                 k = self.encoder_k(feats_strong[index_strong])
                 k = k.detach()
                 k_batch = torch.cat((k_batch,k.view(1,-1)), 0)
-                # print('k:',k.size())
-        # print(q_batch.size(),weak_labels.size())
-        # print(k_batch.size(),q_batch.size())
-        # print(q_batch.view(-1,1,embedding_size).size())
-        # print(q_batch.view(-1,embedding_size).size(),k_batch.view(-1,embedding_size))
+                k_labels = torch.cat([k_labels,weak_label.unsqueeze(0)],0)
+        labels = k_labels.unique()
+        self.queue_labels = self.queue_labels.to(torch_device)
+        invalid_inds = [torch.where(self.queue_labels==i)[0] for i in labels]
+        if len(invalid_inds)>0:
+            invalid_inds = torch.cat(invalid_inds)
+        valid_inds = torch.tensor(list(set(torch.arange(len(self.queue)))-set(invalid_inds)))
+        queue = self.queue[valid_inds] if valid_inds.size(0)>0 else self.queue
+        if q_batch.size(0) == 0:
+            print(strong_labels,weak_labels)
+
         l_pos = q_batch.view(-1,1,embedding_size).bmm(k_batch.view(-1,embedding_size,1)).view(-1,1)
-        # print(q_batch.view(-1,embedding_size).size(),self.queue.view(embedding_size,-1))
-        l_neg = q_batch.view(-1,embedding_size).mm(self.queue.view(embedding_size,-1))
+        l_neg = q_batch.view(-1,embedding_size).mm(queue.view(embedding_size,-1))
         copy_params(self.encoder_q,self.encoder_k, m = paramK_momentum)
         self.dequeue()
-        self.enqueue(k_batch)
-        # print(weak_labels.size())
-
-
-        # previous_max_label = torch.max(self.loss_fn.label_memory)
-
-        # compute output
-        # imgK, idx_unshuffle = batch_shuffle_single_gpu(imgK)
-        # encK_out = encK(imgK)
-        # print(l_pos.size(),l_neg.size())
+        self.enqueue(k_batch,k_labels)
 
         all_enc = torch.cat([l_pos, l_neg], dim=1)
-        # print(all_enc.size())
-        # labels, enqueue_idx = create_labels(q_batch.size(0), previous_max_label)
-        # loss = self.loss_fn(all_enc, labels, enqueue_idx = enqueue_idx)
-        loss = self.loss_fn(all_enc,torch.zeros(all_enc.size(0)).long().to(torch_device))
+        try:
+            loss = self.loss_fn(all_enc,torch.zeros(all_enc.size(0)).long().to(torch_device))
+        except:
+            raise Exception
         if torch.isnan(loss):
             loss = torch.tensor([0.0]).to(torch_device)
-            print(strong_labels,weak_labels)
+            # print(strong_labels,weak_labels)
         # print(loss)
         losses = dict()
         losses['contrastive_loss'] = loss
         return losses
-    def enqueue(self,k_batch):
+    def enqueue(self,k_batch,k_labels):
         self.batch_size = k_batch.size(0)
         # print(self.batch_size,self.queue.size())
+        device = k_labels.get_device()
+        self.queue_labels = torch.cat([self.queue_labels.to(device),k_labels])
         torch_device = k_batch.get_device()
         self.queue = self.queue.to(torch_device)
         self.queue = torch.cat((self.queue, k_batch), 0)
@@ -108,6 +107,7 @@ class BaseContrastHead(nn.Module, metaclass=ABCMeta):
     def dequeue(self):
         if self.queue.size(0) > self.max_size:
             self.queue = self.queue[self.batch_size::]
+            self.queue_labels = self.queue_labels[self.batch_size::]
 
 
     # def forward(self):

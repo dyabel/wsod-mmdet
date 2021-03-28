@@ -108,15 +108,21 @@ def build_dataloader(dataset,
         # DistributedGroupSampler will definitely shuffle the data to satisfy
         # that images on each GPU are in the same group
         if shuffle:
-            sampler = WsodDistributedGroupSampler(dataset, samples_per_gpu,
-                                              world_size, rank)
+            # sampler = WsodDistributedGroupSampler(dataset, samples_per_gpu,
+            #                                       world_size, rank)
+            sampler = DistributedGroupSampler(dataset, samples_per_gpu,
+                                                        world_size, rank)
         else:
-            sampler = WsodDistributedSampler(
-                dataset, world_size, rank, shuffle=False)
+            # sampler = WsodDistributedSampler(
+            sampler = DistributedSampler(
+            dataset, world_size, rank, shuffle=False)
         batch_size = samples_per_gpu
         num_workers = workers_per_gpu
     else:
-        sampler = WsodSampler(dataset, samples_per_gpu) if shuffle else None
+        # if 'Msod' in str(dataset):
+        #     sampler = WsodSampler(dataset, samples_per_gpu) if shuffle else None
+        # else:
+        sampler = GroupSampler(dataset, samples_per_gpu) if shuffle else None
         batch_size = num_gpus * samples_per_gpu
         num_workers = num_gpus * workers_per_gpu
     # sampler = WsodSampler(dataset, samples_per_gpu) if shuffle else None
