@@ -395,9 +395,6 @@ class ConvFCWSODHead(BBoxHead):
         torch_device = label_img_level.get_device()
         label_weights = torch.ones(label_img_level.size(0)).to(torch_device)
         avg_factor = max(torch.sum(label_weights > 0).float().item(), 1.)
-        # torch.set_printoptions(profile="full")
-        # num_cls = cls_proposal_mat.size(1)
-        # label_img_level,label_weights = convert_label(labels,num_cls)
         losses['loss_img_level'] = self.loss_cls_weak(phi,
                                                  label_img_level,
                                                  label_weights,
@@ -407,7 +404,7 @@ class ConvFCWSODHead(BBoxHead):
 
     #duyu
     @force_fp32(apply_to=('cls_score', 'bbox_pred'))
-    def loss_strong(self,
+    def loss_strong1(self,
              cls_score,
              bbox_pred,
              rois,
@@ -461,7 +458,7 @@ class ConvFCWSODHead(BBoxHead):
 
     #yangyk
     @force_fp32(apply_to=('cls_score', 'bbox_pred'))
-    def loss_strong1(self,
+    def loss_strong(self,
              cls_score,
              bbox_pred,
              rois,

@@ -509,6 +509,14 @@ class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         losses['contrastive_loss'] = torch.tensor([0.0])
         return losses
 
+        # duyu
+    def _bbox_forward_embedding_branch1(self, bbox_feats):
+        """Box head forward function used in both training and testing."""
+        # TODO: a more flexible way to decide which feature maps to use
+        cls_score, bbox_pred,min_pos_pos_dist, min_neg_neg_dist = self.bbox_head(bbox_feats,hard_neg_roi_id=hard_neg_roi_id,pos_roi_id=pos_roi_id)
+        bbox_results = dict(
+            cls_score=cls_score, bbox_pred=bbox_pred, bbox_feats=bbox_feats)
+        return bbox_results
     #duyu
     def _bbox_forward_train_second_pass(self, x, sampling_results, gt_bboxes, gt_labels,
                             img_metas,gt_bboxes_ignore=None):
@@ -546,9 +554,8 @@ class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         loss_strong_branch1['loss_bbox_strong_branch1_sp'] = loss_bbox_strong_branch1['loss_bbox_strong']
         loss_strong_branch1['acc_strong_branch1_sp'] = loss_bbox_strong_branch1['acc_strong']
         bbox_results_strong_branch1.update(loss_bbox_strong_branch1_sp=loss_strong_branch1)
+
         #calculate loss_weak_branch1
-        bbox_targets_weak_branch1 = self.bbox_head.get_targets([sampling_results[1]], [gt_bboxes[1]],
-                                                       [gt_labels[1]], self.train_cfg)
         bbox_results_weak_pseudo = self._bbox_forward_strong_branch1(bbox_feats_weak)
         bbox_results_weak_branch1 = self._bbox_forward_weak(bbox_feats_weak)
 
@@ -592,10 +599,7 @@ class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         acc_weak = accuracy(bbox_results_weak_branch2['cls_score'],labels)
 
         loss_bbox_weak_branch2 = dict()
-        # loss_bbox_weak_branch2 = self.bbox_head.loss_strong(bbox_results_weak_branch2['cls_score'],
-        #                                                       bbox_results_weak_branch2['bbox_pred'],
-        #                                                       rois_weak,
-        #                                                       *bbox_targets_weak_branch1)
+
         loss_bbox_weak_branch2['loss_cls_weak_branch2'] = self.bbox_head.loss_cls(bbox_results_weak_branch2['cls_score'], labels,
                                                              label_weights,
                                                              avg_factor=avg_factor,
