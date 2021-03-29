@@ -4,18 +4,17 @@
 # @Email   : abelazady@foxmail.com
 # @File    : my_runner.py
 # @Software: PyCharm
-import time
 from mmcv.runner import EpochBasedRunner
 import mmcv
 import warnings
 from mmcv.runner.utils import get_host_info
-import torch
-import torch.distributed as dist
-import multiprocessing
+import time
+from mmcv.runner.hooks import HOOKS, Hook
+from mmcv.runner.priority import get_priority
+# from mmcv.runner.hooks.optimizer import OptimizerHook
 class MyRunner(EpochBasedRunner):
     def __init__(self,*args,**kwargs):
         super(MyRunner,self).__init__(*args,**kwargs)
-        self.rank_finish = 0
     def train(self,data_loader,**kwargs):
         # for name,param in self.model.named_parameters():
             # print(name)
@@ -30,8 +29,11 @@ class MyRunner(EpochBasedRunner):
         for i, data_batch in enumerate(self.data_loader):
             self._inner_iter = i
             self.call_hook('before_train_iter')
+            time_start = time.time()
             self.run_iter(data_batch, train_mode=True)
+            print('rank%dinneriter%d '%(self.rank,self._inner_iter),time.time()-time_start)
             self.call_hook('after_train_iter')
+            print('rank%dinneriter%d '%(self.rank,self._inner_iter),time.time()-time_start)
             self._iter += 1
         self.call_hook('after_train_epoch')
         self._epoch += 1
@@ -92,3 +94,41 @@ class MyRunner(EpochBasedRunner):
 
            time.sleep(1)  # wait for some hooks like loggers to finish
            self.call_hook('after_run')
+
+
+    # def register_hook(self, hook, priority='NORMAL'):
+    #     """Register a hook into the hook list.
+    #
+    #     The hook will be inserted into a priority queue, with the specified
+    #     priority (See :class:`Priority` for details of priorities).
+    #     For hooks with the same priority, they will be triggered in the same
+    #     order as they are registered.
+    #
+    #     Args:
+    #         hook (:obj:`Hook`): The hook to be registered.
+    #         priority (int or str or :obj:`Priority`): Hook priority.
+    #             Lower value means higher priority.
+    #     """
+    #     assert isinstance(hook, Hook)
+    #     if hasattr(hook, 'priority'):
+    #         raise ValueError('"priority" is a reserved attribute for hooks')
+    #     priority = get_priority(priority)
+    #     hook.priority = priority
+    #     # insert the hook to a sorted list
+    #     inserted = False
+    #     for i in range(len(self._hooks) - 1, -1, -1):
+    #         if priority >= self._hooks[i].priority:
+    #             self._hooks.insert(i + 1, hook)
+    #             inserted = True
+    #             break
+    #     if not inserted:
+    #         self._hooks.insert(0, hook)
+    # def call_hook(self, fn_name):
+    #     """Call all hooks.
+    #
+    #     Args:
+    #         fn_name (str): The function name in each hook to be called, such as
+    #             "before_train_epoch".
+    #     """
+    #     for hook in self._hooks:
+    #         getattr(hook, fn_name)(self)

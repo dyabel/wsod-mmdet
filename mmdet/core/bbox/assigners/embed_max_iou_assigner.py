@@ -256,6 +256,8 @@ class EmbedMaxIoUAssigner(BaseAssigner):
                     #assigned_hard_neg_labels=assigned_hard_neg_labels[assigned_hard_neg_labels!=-1]
                 else:
                     assigned_hard_neg_labels = None
+            else:
+                assigned_hard_neg_labels = None
 
             num_hard_neg_prop = len(assigned_hard_neg_gt_inds[assigned_hard_neg_gt_inds!=-1])
             return EmbedAssignResult(
