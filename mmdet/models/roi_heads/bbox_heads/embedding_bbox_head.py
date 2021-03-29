@@ -213,7 +213,7 @@ class EmbedHead(BBoxHead):
 
 
 
-    def cos_distance(self,feats,reps):
+    def cos_distance1(self,feats,reps):
         '''
         :param feats: shape[N_prop,rep_dim]
         :param reps: shape[N_base_class,rep_dim,reps_per_class]
@@ -245,6 +245,49 @@ class EmbedHead(BBoxHead):
         '''
         return cos_dist
 
+
+    def cos_distance(self,feats,reps):
+        '''
+        :param feats: shape[N_prop,rep_dim]
+        :param reps: shape[N_base_class,rep_dim,reps_per_class]
+        :return: cos distance matrix [N_prop,N_base_class,reps_per_class]
+        '''
+
+        num_class = reps.shape[0]
+        reps_per_class = reps.shape[2]
+        rep_dim = reps.shape[1]
+        '''
+        reps1 = torch.reshape(reps,[num_class*reps_per_class,rep_dim])
+        cos_sim = torch.mm(feats,reps1.transpose(1,0))
+        cos_dist1 = 1 - cos_sim.reshape([feats.shape[0],num_class,reps_per_class])
+
+        '''
+
+        '''
+        cos_dist = torch.zeros(feats.shape[0],reps.shape[0],reps.shape[2],device=feats.device)
+        for i in range(reps.shape[2]):
+            cos_sim = torch.mm(feats,reps[:,:,i].transpose(1,0))
+            cos_dist[:,:,i] = 1 - cos_sim
+        '''
+
+
+        reps1 = reps.permute([0,2,1])
+        reps1 = reps1.reshape([reps.shape[0]*reps.shape[2],reps.shape[1]])
+        cos_sim = torch.mm(feats,reps1.transpose(1,0))
+        cos_dist = 1 - cos_sim
+        cos_dist = cos_dist.reshape(-1,reps.shape[0],reps.shape[2])
+
+
+
+
+        '''
+        cos_dist = torch.zeros(feats.shape[0],reps.shape[0],reps.shape[2],device=feats.device)
+        for i in range(feats.shape[0]):
+            for j in range(reps.shape[0]):
+                for k in range(reps.shape[2]):
+                    cos_dist[i,j,k] = 1 - torch.cosine_similarity(feats[i,:],reps[j,:,k],dim=0)
+        '''
+        return cos_dist
 
 
 

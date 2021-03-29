@@ -510,7 +510,7 @@ class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         return losses
 
         # duyu
-    def _bbox_forward_embedding_branch1(self, bbox_feats):
+    def _bbox_forward_embedding_branch2(self, bbox_feats,rois,hard_neg_roi_id=None,pos_roi_id=None):
         """Box head forward function used in both training and testing."""
         # TODO: a more flexible way to decide which feature maps to use
         cls_score, bbox_pred,min_pos_pos_dist, min_neg_neg_dist = self.bbox_head(bbox_feats,hard_neg_roi_id=hard_neg_roi_id,pos_roi_id=pos_roi_id)
@@ -544,15 +544,17 @@ class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         #calculate loss_strong_branch1
         bbox_targets_strong = self.bbox_head.get_targets([sampling_results[0]], [gt_bboxes[0]],
                                                   [gt_labels[0]], self.train_cfg)
-
+        #yanyk
         bbox_results_strong_branch1 = self._bbox_forward_strong_branch1(bbox_feats_strong)
         loss_bbox_strong_branch1 = self.bbox_head.loss_strong(bbox_results_strong_branch1['cls_score'],
                                                               bbox_results_strong_branch1['bbox_pred'], rois_strong,
                                                               *bbox_targets_strong)
+
+
         loss_strong_branch1 = dict()
-        loss_strong_branch1['loss_cls_strong_branch1_sp'] = loss_bbox_strong_branch1['loss_cls_strong']
-        loss_strong_branch1['loss_bbox_strong_branch1_sp'] = loss_bbox_strong_branch1['loss_bbox_strong']
-        loss_strong_branch1['acc_strong_branch1_sp'] = loss_bbox_strong_branch1['acc_strong']
+        loss_strong_branch1['loss_cls_strong_branch1'] = loss_bbox_strong_branch1['loss_cls_strong']
+        loss_strong_branch1['loss_bbox_strong_branch1'] = loss_bbox_strong_branch1['loss_bbox_strong']
+        loss_strong_branch1['acc_strong_branch1'] = loss_bbox_strong_branch1['acc_strong']
         bbox_results_strong_branch1.update(loss_bbox_strong_branch1_sp=loss_strong_branch1)
 
         #calculate loss_weak_branch1
@@ -563,7 +565,7 @@ class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                           gt_labels[1]
                                                           )
         loss_weak_branch1 = dict()
-        loss_weak_branch1['loss_img_level_sp'] = loss_bbox_weak_branch1['loss_img_level']
+        loss_weak_branch1['loss_img_level'] = loss_bbox_weak_branch1['loss_img_level']
         bbox_results_weak_branch1.update(loss_bbox_weak_branch1_sp=loss_weak_branch1)
         #generate oam labels for weak image
         oam_bboxes_weak, oam_labels_weak = bbox_select_per_class(bbox_results_weak_pseudo['bbox_pred'],
@@ -579,27 +581,49 @@ class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         #                                                  oam_labels_weak,img_metas,gt_bboxes_ignore=gt_bboxes_ignore)
 
         #calculate loss_strong_branch2
-        bbox_results_strong_branch2 = self._bbox_forward_strong_branch2(bbox_feats_strong)
-        loss_bbox_strong_branch2 = self.bbox_head.loss_strong(bbox_results_strong_branch2['cls_score'],
-                                                              bbox_results_strong_branch2['bbox_pred'],
-                                                              rois_strong,
-                                                              *bbox_targets_strong)
+        hard_neg_roi_labels, hard_neg_roi_id = self.get_hard_neg_target(rois_strong, sampling_results[0])
+        all_bbox_labels = bbox_targets_strong
+        pos_roi_labels, pos_roi_id = all_bbox_labels[
+                                         (all_bbox_labels != self.bbox_head.num_classes).nonzero(as_tuple=False)], (
+                                                 all_bbox_labels != self.bbox_head.num_classes).nonzero(as_tuple=False)
+        pos_roi_id = pos_roi_id.squeeze(1)
+        pos_roi_labels = pos_roi_labels.squeeze(1)
+        bbox_results_strong_branch2 = self._bbox_forward_embedding_branch2(bbox_feats_strong,
+                                                                           hard_neg_roi_id=hard_neg_roi_id,
+                                                                           pos_roi_id=pos_roi_id)
+
+        loss_bbox_strong_branch2 = self.bbox_head.loss_strong(bbox_results_strong_branch1['cls_score'],
+                                                       bbox_results_strong_branch1['bbox_pred'], rois_strong,
+                                                       *bbox_targets_strong,
+                                                       min_pos_pos_dist=bbox_results_strong_branch1['min_pos_pos_dist'],
+                                                       min_neg_neg_dist=bbox_results_strong_branch1['min_neg_neg_dist'],
+                                                       pos_roi_labels=pos_roi_labels,
+                                                       hard_neg_roi_labels=hard_neg_roi_labels)
         loss_strong_branch2 = dict()
         loss_strong_branch2['loss_cls_strong_branch2'] = loss_bbox_strong_branch2['loss_cls_strong']
         loss_strong_branch2['acc_strong_branch2'] = loss_bbox_strong_branch2['acc_strong']
         loss_strong_branch2['loss_bbox_strong_branch2'] = loss_bbox_strong_branch2['loss_bbox_strong']
+        loss_strong_branch1['loss_embedding'] = loss_bbox_strong_branch2['loss_embed_strong']
         bbox_results_strong_branch2.update(loss_bbox_strong_branch2=loss_strong_branch2)
-        #calculate loss_weak_branch2
-        bbox_results_weak_branch2 = self._bbox_forward_strong_branch2(bbox_feats_weak)
 
+        #calculate loss_weak_branch2
         bbox_targets_weak_branch2 = self.bbox_head.get_targets([sampling_results[1]],oam_bboxes_weak,oam_labels_weak,self.train_cfg)
+        hard_neg_roi_labels, hard_neg_roi_id = self.get_hard_neg_target(rois_weak, sampling_results[1])
+        all_bbox_labels = bbox_targets_weak_branch2
+        pos_roi_labels, pos_roi_id = all_bbox_labels[
+                                         (all_bbox_labels != self.bbox_head.num_classes).nonzero(as_tuple=False)], (
+                                             all_bbox_labels != self.bbox_head.num_classes).nonzero(as_tuple=False)
+        pos_roi_id = pos_roi_id.squeeze(1)
+        pos_roi_labels = pos_roi_labels.squeeze(1)
+
+        bbox_results_weak_branch2 = self._bbox_forward_embedding_branch2(bbox_feats_strong,
+                                                                           hard_neg_roi_id=hard_neg_roi_id,
+                                                                           pos_roi_id=pos_roi_id)
         # bbox_targets_weak_branch2 = self.bbox_head.get_targets([sampling_results[1]],[gt_bboxes[1]],[gt_labels[1]],self.train_cfg)
         labels,label_weights,bbox_targets,bbox_weights = bbox_targets_weak_branch2
         avg_factor = max(torch.sum(label_weights > 0).float().item(), 1.)
         acc_weak = accuracy(bbox_results_weak_branch2['cls_score'],labels)
-
         loss_bbox_weak_branch2 = dict()
-
         loss_bbox_weak_branch2['loss_cls_weak_branch2'] = self.bbox_head.loss_cls(bbox_results_weak_branch2['cls_score'], labels,
                                                              label_weights,
                                                              avg_factor=avg_factor,
