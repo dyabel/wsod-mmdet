@@ -446,42 +446,11 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                ):
         torch_device = strong_labels.get_device()
         oam_labels = oam_labels.to(torch_device)
-        if self.with_bbox or self.with_mask:
-            num_imgs = len(img_metas)
-            if gt_bboxes_ignore is None:
-                gt_bboxes_ignore = [None for _ in range(num_imgs)]
-            sampling_results = []
-            assert num_imgs == 2
-            # assign for strong image
-            assign_result = self.bbox_assigner.assign(
-                strong_bboxes, strong_bboxes, gt_bboxes_ignore[0],
-                strong_labels)
-            sampling_result = self.bbox_sampler.sample(
-                assign_result,
-                strong_bboxes,
-                strong_bboxes,
-                strong_labels,
-                feats=[lvl_feat[0][None] for lvl_feat in x])
-            sampling_results.append(sampling_result)
-
-            # assign for weak image
-            # print(strong_bboxes.size(),oam_bboxes.size())
-            assign_result = self.bbox_assigner.assign(
-                oam_bboxes, oam_bboxes, gt_bboxes_ignore[1],
-                oam_labels)
-            sampling_result = self.bbox_sampler.sample(
-                assign_result,
-                oam_bboxes,
-                oam_bboxes,
-                oam_labels,
-                feats=[lvl_feat[1][None] for lvl_feat in x])
-
-            sampling_results.append(sampling_result)
         x_strong = tuple([torch.unsqueeze(xx[0], 0) for xx in x])
         x_weak = tuple([torch.unsqueeze(xx[1], 0) for xx in x])
 
-        rois_strong = bbox2roi([res.bboxes for res in [sampling_results[0]]])
-        rois_weak = bbox2roi([res.bboxes for res in [sampling_results[1]]])
+        rois_strong = bbox2roi([strong_bboxes])
+        rois_weak = bbox2roi([oam_bboxes])
 
         bbox_feats_strong = self.bbox_roi_extractor(
             x_strong[:self.bbox_roi_extractor.num_inputs], rois_strong)
@@ -495,12 +464,7 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             bbox_feats_strong = self.shared_head(bbox_feats_strong)
             bbox_feats_weak = self.shared_head(bbox_feats_weak)
 
-        labels_strong,_,_,_ = self.bbox_head.get_targets([sampling_results[0]], [strong_bboxes],
-                                                         [strong_labels], self.train_cfg)
-        labels_weak,_,_,_ = self.bbox_head.get_targets([sampling_results[1]], [oam_bboxes],
-                                                         [oam_labels], self.train_cfg)
-        # print(bbox_feats_strong.size(),labels_strong.size())
-        contrastive_losses = self.contrast_head.forward_train(bbox_feats_strong,bbox_feats_weak,labels_strong,labels_weak)
+        contrastive_losses = self.contrast_head.forward_train(bbox_feats_strong,bbox_feats_weak,strong_labels,oam_labels)
         losses = dict()
         losses.update(contrastive_losses)
         # losses['contrastive_loss'] = torch.tensor([0.0])
