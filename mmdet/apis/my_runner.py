@@ -29,11 +29,11 @@ class MyRunner(EpochBasedRunner):
         for i, data_batch in enumerate(self.data_loader):
             self._inner_iter = i
             self.call_hook('before_train_iter')
-            time_start = time.time()
+            # time_start = time.time()
             self.run_iter(data_batch, train_mode=True)
-            print('rank%dinneriter%d '%(self.rank,self._inner_iter),time.time()-time_start)
+            # print('rank%dinneriter%d '%(self.rank,self._inner_iter),time.time()-time_start)
             self.call_hook('after_train_iter')
-            print('rank%dinneriter%d '%(self.rank,self._inner_iter),time.time()-time_start)
+            # print('rank%dinneriter%d '%(self.rank,self._inner_iter),time.time()-time_start)
             self._iter += 1
         self.call_hook('after_train_epoch')
         self._epoch += 1

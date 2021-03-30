@@ -9,6 +9,7 @@ from mmdet.core.evaluation import bbox_overlaps
 from mmdet.models.losses import accuracy
 from mmdet.core import (bbox2roi, bbox_mapping, merge_aug_bboxes,
                         merge_aug_masks, multiclass_nms)
+import time
 @HEADS.register_module()
 class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
     """Simplest base roi head including one bbox head and one mask head."""
@@ -45,8 +46,8 @@ class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         self.bbox_roi_extractor = build_roi_extractor(bbox_roi_extractor)
         self.bbox_head = build_head(bbox_head)
 
-    def init_embedding_head(self,embedding_head):
-        self.embedding_head = build_head(embedding_head)
+    # def init_embedding_head(self,embedding_head):
+    #     self.embedding_head = build_head(embedding_head)
 
     def init_contrast_head(self,contrast_head):
         self.contrast_head = build_head(contrast_head)
@@ -478,7 +479,9 @@ class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
     def _bbox_forward_embedding_branch2(self, bbox_feats,hard_neg_roi_id=None,pos_roi_id=None):
         """Box head forward function used in both training and testing."""
         # TODO: a more flexible way to decide which feature maps to use
+        # time_start = time.time()
         cls_score, bbox_pred,min_pos_pos_dist, min_neg_neg_dist = self.bbox_head.forward_embedding(bbox_feats,hard_neg_roi_id=hard_neg_roi_id,pos_roi_id=pos_roi_id)
+        # print(time.time()-time_start)
         bbox_results = dict(
             cls_score=cls_score, bbox_pred=bbox_pred, bbox_feats=bbox_feats,min_pos_pos_dist=min_pos_pos_dist,min_neg_neg_dist=min_neg_neg_dist)
         return bbox_results

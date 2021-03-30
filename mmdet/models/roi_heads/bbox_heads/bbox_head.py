@@ -300,7 +300,6 @@ class BBoxHead(nn.Module):
                 scale_factor = bboxes.new_tensor(scale_factor)
                 bboxes = (bboxes.view(bboxes.size(0), -1, 4) /
                           scale_factor).view(bboxes.size()[0], -1)
-
         if cfg is None:
             return bboxes, scores
         else:
