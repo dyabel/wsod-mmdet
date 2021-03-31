@@ -8,6 +8,40 @@ from .utils import weight_reduce_loss
 eps = 0.000001
 
 
+def cross_entropy_without_softmax(pred,
+                                  label,
+                                  weight=None,
+                                  reduction='mean',
+                                  avg_factor=None,
+                                  class_weight=None):
+    """Calculate the CrossEntropy loss.
+
+    Args:
+        pred (torch.Tensor): The prediction with shape (N, C), C is the number
+            of classes.
+        label (torch.Tensor): The learning label of the prediction.
+        weight (torch.Tensor, optional): Sample-wise loss weight.
+        reduction (str, optional): The method used to reduce the loss.
+        avg_factor (int, optional): Average factor that is used to average
+            the loss. Defaults to None.
+        class_weight (list[float], optional): The weight for each class.
+
+    Returns:
+        torch.Tensor: The calculated loss
+    """
+    # element-wise losses
+    #loss = F.cross_entropy(pred, label, weight=class_weight, reduction='none')
+
+    loss = F.nll_loss(torch.log(pred), label, reduction = 'none')
+
+    # apply weights and do the reduction
+    if weight is not None:
+        weight = weight.float()
+    loss = weight_reduce_loss(
+        loss, weight=weight, reduction=reduction, avg_factor=avg_factor)
+
+    return loss
+
 def cross_entropy(pred,
                   label,
                   weight=None,

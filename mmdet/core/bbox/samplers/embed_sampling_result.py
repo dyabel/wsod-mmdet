@@ -21,14 +21,17 @@ class EmbedSamplingResult(util_mixins.NiceRepr):
             'pos_is_gt': tensor([], dtype=torch.uint8)
         })>
     """
-
+    #dy add hard_neg_id
     def __init__(self, pos_inds, neg_inds, bboxes, gt_bboxes, assign_result,
-                 gt_flags,hard_neg_inds=None):
+                 gt_flags,hard_neg_id=None,hard_neg_inds=None):
         self.pos_inds = pos_inds
         self.neg_inds = neg_inds
         self.pos_bboxes = bboxes[pos_inds]
         self.neg_bboxes = bboxes[neg_inds]
         self.pos_is_gt = gt_flags[pos_inds]
+        #dy
+        self.bboxes = torch.cat([self.pos_bboxes,self.neg_bboxes])
+        self.hard_neg_id = hard_neg_id
 
         self.num_gts = gt_bboxes.shape[0]
         self.pos_assigned_gt_inds = assign_result.gt_inds[pos_inds] - 1
@@ -50,6 +53,8 @@ class EmbedSamplingResult(util_mixins.NiceRepr):
 
         #yangyk
         self.hard_neg_inds=hard_neg_inds
+        # if hard_neg_inds is not None:
+        #     print(hard_neg_inds.size(),bboxes.size())
         if assign_result.hard_neg_labels is not None:
             self.hard_neg_labels = assign_result.hard_neg_labels[hard_neg_inds]
             self.hard_neg_bboxes = bboxes[hard_neg_inds]
@@ -57,10 +62,10 @@ class EmbedSamplingResult(util_mixins.NiceRepr):
             self.hard_neg_labels = None
             self.hard_neg_bboxes = None
 
-    @property
-    def bboxes(self):
-        """torch.Tensor: concatenated positive and negative boxes"""
-        return torch.cat([self.pos_bboxes, self.neg_bboxes])
+    # @property
+    # def bboxes(self):
+    #     """torch.Tensor: concatenated positive and negative boxes"""
+    #     return torch.cat([self.pos_bboxes, self.neg_bboxes])
 
     def to(self, device):
         """Change the device of the data inplace.

@@ -14,7 +14,7 @@ from .pisa_loss import carl_loss, isr_p
 from .smooth_l1_loss import L1Loss, SmoothL1Loss, l1_loss, smooth_l1_loss
 from .utils import reduce_loss, weight_reduce_loss, weighted_loss
 from .varifocal_loss import VarifocalLoss
-from .my_cross_entropy_loss import MyCrossEntropyLoss
+from .my_cross_entropy_loss import MyCrossEntropyLoss,cross_entropy_without_softmax
 
 __all__ = [
     'accuracy','img_level_accuracy', 'Accuracy', 'cross_entropy', 'binary_cross_entropy',
@@ -25,5 +25,5 @@ __all__ = [
     'GHMR', 'reduce_loss', 'weight_reduce_loss', 'weighted_loss', 'L1Loss',
     'l1_loss', 'isr_p', 'carl_loss', 'AssociativeEmbeddingLoss',
     'GaussianFocalLoss', 'QualityFocalLoss', 'DistributionFocalLoss',
-    'VarifocalLoss','MyCrossEntropyLoss'
+    'VarifocalLoss','MyCrossEntropyLoss','cross_entropy_without_softmax'
 ]

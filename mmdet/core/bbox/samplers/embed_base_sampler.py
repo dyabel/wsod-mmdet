@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 
 import torch
 
-from .embed_sampling_result import EmbedSamplingResult
+from .embed_sampling_result import  EmbedSamplingResult
 
 
 class EmbedBaseSampler(metaclass=ABCMeta):
@@ -70,8 +70,8 @@ class EmbedBaseSampler(metaclass=ABCMeta):
         bboxes = bboxes[:, :4]
 
         gt_flags = bboxes.new_zeros((bboxes.shape[0], ), dtype=torch.uint8)
-        if gt_labels is not None:
         # if self.add_gt_as_proposals and len(gt_bboxes) > 0:
+        if gt_labels is not None:
             # if gt_labels is None:
             #     raise ValueError(
             #         'gt_labels must be given when add_gt_as_proposals is True')
@@ -127,13 +127,16 @@ class EmbedBaseSampler(metaclass=ABCMeta):
             #print('neg',neg_inds.shape)
             #print('hard_neg',hard_neg_inds.shape)
 
+            #dy
+            hard_neg_id = len(pos_inds) + len(neg_inds) + torch.arange(len(hard_neg_inds))
+
             neg_inds = torch.cat([neg_inds,hard_neg_inds])
             neg_inds = neg_inds.unique()
             #print('neg after concat',neg_inds.shape)
 
 
             sampling_result = EmbedSamplingResult(pos_inds, neg_inds, bboxes, gt_bboxes,
-                                             assign_result, gt_flags,hard_neg_inds=hard_neg_inds)
+                                             assign_result, gt_flags,hard_neg_id=hard_neg_id,hard_neg_inds=hard_neg_inds)
 
 
 

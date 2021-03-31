@@ -443,7 +443,7 @@ class ConvFCWSODHead(BBoxHead):
         neg_one = torch.ones(1, device=neg_feat.device)
 
         pos_reps = self.pos_rep_fc[0](pos_one)
-        neg_reps = self.pos_rep_fc[0](neg_one)
+        neg_reps = self.neg_rep_fc[0](neg_one)
 
         pos_reps = torch.reshape(pos_reps, [self.base_classes, self.pos_vec_length, self.reps_per_class])
         neg_reps = torch.reshape(neg_reps, [self.base_classes, self.neg_vec_length, self.reps_per_class])

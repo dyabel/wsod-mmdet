@@ -499,17 +499,12 @@ class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
 
             return hard_neg_labels,hard_neg_roi_id
 
-
-        hard_neg_rois = bbox2roi([res.hard_neg_bboxes for res in sampling_results])
-        hard_neg_labels_list = ([res.hard_neg_labels for res in sampling_results])
-        hard_neg_labels = torch.cat(hard_neg_labels_list, 0)
-        hard_neg_roi_id = hard_neg_labels.new_full((hard_neg_labels.shape[0],),-1,dtype=torch.long)
-
-        for id1, hard_neg_roi in enumerate(hard_neg_rois):
-            for id2, roi in enumerate(rois):
-                if (hard_neg_roi == roi).all():
-                    hard_neg_roi_id[id1] = id2
-
+        # time_start = time.time()
+        hard_neg_labels = sampling_results[0].hard_neg_labels
+        hard_neg_roi_id = sampling_results[0].hard_neg_id
+        # hard_neg_roi_id = torch.cat(hard_neg_roi_id, 0)
+        # hard_neg_labels = torch.cat(hard_neg_labels_list, 0)
+        # print(time.time()-time_start)
 
         return hard_neg_labels,hard_neg_roi_id
     #duyu
@@ -611,13 +606,12 @@ class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         pos_roi_id = pos_roi_id.squeeze(1)
         pos_roi_labels = pos_roi_labels.squeeze(1)
 
-        bbox_results_weak_branch2 = self._bbox_forward_embedding_branch2(bbox_feats_strong,
+        bbox_results_weak_branch2 = self._bbox_forward_embedding_branch2(bbox_feats_weak,
                                                                            hard_neg_roi_id=hard_neg_roi_id,
                                                                            pos_roi_id=pos_roi_id)
         labels,label_weights,bbox_targets,bbox_weights = bbox_targets_weak_branch2
-        avg_factor = max(torch.sum(label_weights > 0).float().item(), 1.)
-        acc_weak = accuracy(bbox_results_weak_branch2['cls_score'],labels)
-        loss_bbox_weak_branch2 = dict()
+        # avg_factor = max(torch.sum(label_weights > 0).float().item(), 1.)
+        # acc_weak = accuracy(bbox_results_weak_branch2['cls_score'],labels)
         loss_bbox_weak_branch2 = self.bbox_head.loss_weak_branch2(bbox_results_weak_branch2['cls_score'],
                                                                   labels,
                                                                   label_weights,
@@ -761,7 +755,7 @@ class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         if self.with_shared_head:
             bbox_feats = self.shared_head(bbox_feats)
 
-        bbox_results = self._bbox_forward_strong_branch2(bbox_feats)
+        bbox_results = self._bbox_forward_embedding_branch2(bbox_feats)
 
         img_shapes = tuple(meta['img_shape'] for meta in img_metas)
         scale_factors = tuple(meta['scale_factor'] for meta in img_metas)

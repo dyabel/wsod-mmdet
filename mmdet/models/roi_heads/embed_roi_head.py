@@ -133,36 +133,25 @@ class EmbedRoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
 
 
     # yangyk
-    def _bbox_forward(self,x, rois_pos,rois_hard_neg,hard_neg_roi_id=None,pos_roi_id=None):
+    def _bbox_forward(self, x, rois,hard_neg_roi_id=None,pos_roi_id=None):
         """Box head forward function used in both training and testing."""
         # TODO: a more flexible way to decide which feature maps to use
-        bbox_feats_pos = self.bbox_roi_extractor(
-            x[:self.bbox_roi_extractor.num_inputs], rois_pos)
-        if rois_hard_neg is not None:
-            bbox_feats_neg = self.bbox_roi_extractor(
-                x[:self.bbox_roi_extractor.num_inputs], rois_hard_neg)
-        else:
-            bbox_feats_neg = None
+        bbox_feats = self.bbox_roi_extractor(
+            x[:self.bbox_roi_extractor.num_inputs], rois)
         if self.with_shared_head:
-            bbox_feats_pos = self.shared_head(bbox_feats_pos)
-            if bbox_feats_neg is not None:
-                bbox_feats_neg = self.shared_head(bbox_feats_neg)
+            bbox_feats = self.shared_head(bbox_feats)
         #cls_score, bbox_pred, final_pos_reps, final_neg_reps,pos_feats_embed, hard_neg_feats_embed = self.bbox_head(bbox_feats,hard_neg_roi_id=hard_neg_roi_id,pos_roi_id=pos_roi_id)
-        if bbox_feats_neg is not None:
-            cls_score, bbox_pred,min_pos_pos_dist, min_neg_neg_dist = self.bbox_head.forward(bbox_feats_pos,bbox_feats_neg,hard_neg_roi_id=hard_neg_roi_id,pos_roi_id=pos_roi_id)
-        else:
-            cls_score, bbox_pred,min_pos_pos_dist, min_neg_neg_dist = self.bbox_head.forward_only_pos(bbox_feats_pos,hard_neg_roi_id=hard_neg_roi_id,pos_roi_id=pos_roi_id)
-
+        cls_score_fc, cls_score, bbox_pred,min_pos_pos_dist, min_neg_neg_dist = self.bbox_head(bbox_feats,hard_neg_roi_id=hard_neg_roi_id,pos_roi_id=pos_roi_id)
         # yangyk
         #bbox_results = dict(
         #    cls_score=cls_score, bbox_pred=bbox_pred, bbox_feats=bbox_feats,final_pos_reps = final_pos_reps, final_neg_reps = final_pos_reps,
         #    pos_feats_embed=pos_feats_embed,hard_neg_feats_embed=hard_neg_feats_embed)
 
         bbox_results = dict(
-           cls_score=cls_score, bbox_pred=bbox_pred, min_pos_pos_dist=min_pos_pos_dist, min_neg_neg_dist = min_neg_neg_dist)
+           cls_score_fc = cls_score_fc,cls_score=cls_score, bbox_pred=bbox_pred, min_pos_pos_dist= min_pos_pos_dist, min_neg_neg_dist = min_neg_neg_dist)
         return bbox_results
 
-    def get_hard_neg_target(self,sampling_results):
+    def get_hard_neg_target(self,rois,sampling_results):
         #print([res.hard_neg_bboxes for res in sampling_results])
         #print(sampling_results)
         flag = True
@@ -171,29 +160,31 @@ class EmbedRoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                 flag = False
         if flag is False:
             hard_neg_labels = None
-            hard_neg_rois = None
-            hard_neg_boxes = None
+            hard_neg_roi_id = None
+            # print('#'*100)
+            # print(flag)
 
-            return hard_neg_labels,hard_neg_rois,hard_neg_boxes
+            return hard_neg_labels,hard_neg_roi_id
 
-
-        hard_neg_rois = bbox2roi([res.hard_neg_bboxes for res in sampling_results])
-        hard_neg_boxes = torch.cat(([res.hard_neg_bboxes for res in sampling_results]),0)
+        #dy
+        # time_start = time.time()
+        # hard_neg_rois = bbox2roi([res.hard_neg_bboxes for res in sampling_results])
         hard_neg_labels_list = ([res.hard_neg_labels for res in sampling_results])
+        hard_neg_roi_id = ([sampling_results[0].hard_neg_id,sampling_results[1].hard_neg_id+len(sampling_results[0].bboxes)])
+        hard_neg_roi_id = torch.cat(hard_neg_roi_id,0)
         hard_neg_labels = torch.cat(hard_neg_labels_list, 0)
+        # assert len(hard_neg_rois)==len(hard_neg_roi_id)
         # hard_neg_roi_id = hard_neg_labels.new_full((hard_neg_labels.shape[0],),-1,dtype=torch.long)
 
-        # time_start = time.time()
         # for id1, hard_neg_roi in enumerate(hard_neg_rois):
         #     for id2, roi in enumerate(rois):
         #         if (hard_neg_roi == roi).all():
         #             hard_neg_roi_id[id1] = id2
+        #             break
         # print(time.time()-time_start)
-        # assert len(hard_neg_boxes.size()) == 2
-        # assert len(hard_neg_rois.size()) == 2
-        # assert len(hard_neg_labels.size()) == 1
 
-        return hard_neg_labels,hard_neg_rois,hard_neg_boxes
+
+        return hard_neg_labels,hard_neg_roi_id
 
 
 
@@ -210,17 +201,22 @@ class EmbedRoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
 
         # yangyk
         # rois shape 1024*5 x tuple 5 tensor 2
-        hard_neg_roi_labels,hard_neg_rois,hard_neg_boxes = self.get_hard_neg_target(sampling_results)
+        hard_neg_roi_labels,hard_neg_roi_id = self.get_hard_neg_target(rois,sampling_results)
+        if hard_neg_roi_labels is not None:
+            assert not (hard_neg_roi_labels>20).any()
 
-        labels,label_weights,bboxes,bbox_weights= self.bbox_head.get_targets(sampling_results, gt_bboxes,
+        bbox_targets = self.bbox_head.get_targets(sampling_results, gt_bboxes,
                                                   gt_labels, self.train_cfg)
 
-        all_bbox_labels = labels
-        pos_roi_labels, pos_roi_id = all_bbox_labels[(all_bbox_labels!=self.bbox_head.num_classes).nonzero(as_tuple=False)],(all_bbox_labels!=self.bbox_head.num_classes).nonzero(as_tuple=False)
+
+        all_bbox_labels = bbox_targets[0]
+        pos_roi_labels, pos_roi_id = all_bbox_labels[(all_bbox_labels!=self.bbox_head.num_classes).nonzero()],(all_bbox_labels!=self.bbox_head.num_classes).nonzero()
         pos_roi_id = pos_roi_id.squeeze(1)
         pos_roi_labels = pos_roi_labels.squeeze(1)
-        pos_rois = rois[pos_roi_id]
-        bbox_results = self._bbox_forward(x,pos_rois,hard_neg_rois,hard_neg_roi_id=None,pos_roi_id=pos_roi_id)
+        if hard_neg_roi_id is not None:
+            assert not (hard_neg_roi_id>=len(rois)).any()
+
+        bbox_results = self._bbox_forward(x, rois,hard_neg_roi_id=hard_neg_roi_id,pos_roi_id=pos_roi_id)
         # yangyk
 
 
@@ -233,20 +229,15 @@ class EmbedRoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                         pos_feats_embed=bbox_results['pos_feats_embed'], hard_neg_feats_embed=bbox_results['hard_neg_feats_embed'],
                                         pos_roi_labels=pos_roi_labels,hard_neg_roi_labels=hard_neg_roi_labels)
         '''
-        labels = torch.cat((pos_roi_labels,hard_neg_roi_labels.new_full(hard_neg_roi_labels.size(),self.bbox_head.num_classes)),dim=0) if hard_neg_roi_labels is not None else pos_roi_labels
-        rois = torch.cat((pos_rois,hard_neg_rois),0) if hard_neg_rois is not None else pos_rois
-        bboxes = torch.cat((bboxes[pos_roi_id],hard_neg_boxes),0) if hard_neg_boxes is not None else bboxes[pos_roi_id]
-        label_weights = labels.new_ones(labels.size(0))
-        bbox_weights = bboxes.new_full(bboxes.size(),1)
-        loss_bbox = self.bbox_head.loss(bbox_results['cls_score'],
+        loss_bbox = self.bbox_head.loss(bbox_results['cls_score_fc'],
+                                        bbox_results['cls_score'],
                                         bbox_results['bbox_pred'],
                                         rois,
-                                        labels,
-                                        label_weights,
-                                        bboxes,
-                                        bbox_weights,
-                                        min_pos_pos_dist=bbox_results['min_pos_pos_dist'],min_neg_neg_dist=bbox_results['min_neg_neg_dist'],
-                                        pos_roi_labels=pos_roi_labels,hard_neg_roi_labels=hard_neg_roi_labels)
+                                        *bbox_targets,
+                                        min_pos_pos_dist=bbox_results['min_pos_pos_dist'],
+                                        min_neg_neg_dist=bbox_results['min_neg_neg_dist'],
+                                        pos_roi_labels=pos_roi_labels,
+                                        hard_neg_roi_labels=hard_neg_roi_labels)
 
 
         bbox_results.update(loss_bbox=loss_bbox)
@@ -360,53 +351,6 @@ class EmbedRoIHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             segm_results = self.simple_test_mask(
                 x, img_metas, det_bboxes, det_labels, rescale=rescale)
             return list(zip(bbox_results, segm_results))
-
-    def simple_test_bboxes(self,
-                           x,
-                           img_metas,
-                           proposals,
-                           rcnn_test_cfg,
-                           rescale=False):
-        """Test only det bboxes without augmentation."""
-        rois = bbox2roi(proposals)
-        bbox_results = self._bbox_forward(x, rois,None)
-        img_shapes = tuple(meta['img_shape'] for meta in img_metas)
-        scale_factors = tuple(meta['scale_factor'] for meta in img_metas)
-
-        # split batch bbox prediction back to each image
-        cls_score = bbox_results['cls_score']
-        bbox_pred = bbox_results['bbox_pred']
-        num_proposals_per_img = tuple(len(p) for p in proposals)
-        rois = rois.split(num_proposals_per_img, 0)
-        cls_score = cls_score.split(num_proposals_per_img, 0)
-
-        # some detector with_reg is False, bbox_pred will be None
-        if bbox_pred is not None:
-            # the bbox prediction of some detectors like SABL is not Tensor
-            if isinstance(bbox_pred, torch.Tensor):
-                bbox_pred = bbox_pred.split(num_proposals_per_img, 0)
-            else:
-                bbox_pred = self.bbox_head.bbox_pred_split(
-                    bbox_pred, num_proposals_per_img)
-        else:
-            bbox_pred = (None,) * len(proposals)
-
-        # apply bbox post-processing to each image individually
-        det_bboxes = []
-        det_labels = []
-        for i in range(len(proposals)):
-            det_bbox, det_label = self.bbox_head.get_bboxes(
-                rois[i],
-                cls_score[i],
-                bbox_pred[i],
-                img_shapes[i],
-                scale_factors[i],
-                rescale=rescale,
-                cfg=rcnn_test_cfg)
-            det_bboxes.append(det_bbox)
-            det_labels.append(det_label)
-        # print(det_bboxes)
-        return det_bboxes, det_labels
 
     def aug_test(self, x, proposal_list, img_metas, rescale=False):
         """Test with augmentations.
