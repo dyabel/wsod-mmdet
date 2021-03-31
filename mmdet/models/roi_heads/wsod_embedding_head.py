@@ -595,6 +595,8 @@ class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         loss_strong_branch2 = dict()
         loss_strong_branch2['loss_cls_strong_branch2'] = loss_bbox_strong_branch2['loss_cls_strong']
         loss_strong_branch2['acc_strong_branch2'] = loss_bbox_strong_branch2['acc_strong']
+        loss_strong_branch2['acc_strong_branch2_fc'] = loss_bbox_strong_branch2['acc_fc']
+        loss_strong_branch2['loss_cls_strong_branch2_fc'] = loss_bbox_strong_branch2['loss_cls_fc']
         loss_strong_branch2['loss_bbox_strong_branch2'] = loss_bbox_strong_branch2['loss_bbox_strong']
         loss_strong_branch2['loss_embedding_strong'] = loss_bbox_strong_branch2['loss_embed_strong']
         bbox_results_strong_branch2.update(loss_bbox_strong_branch2=loss_strong_branch2)
@@ -628,6 +630,8 @@ class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         loss_weak_branch2 = dict()
         loss_weak_branch2['loss_cls_weak_branch2'] = loss_bbox_weak_branch2['loss_cls_weak']
         loss_weak_branch2['acc_weak_branch2'] = loss_bbox_weak_branch2['acc_weak']
+        loss_strong_branch2['acc_weak_branch2_fc'] = loss_bbox_strong_branch2['acc_fc']
+        loss_strong_branch2['loss_cls_weak_branch2_fc'] = loss_bbox_strong_branch2['loss_cls_fc']
         # loss_weak_branch2['loss_embedding_weak'] = loss_bbox_weak_branch2['loss_embed_weak']
         bbox_results_weak_branch2.update(loss_bbox_weak_branch2=loss_weak_branch2)
 
@@ -766,7 +770,7 @@ class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         scale_factors = tuple(meta['scale_factor'] for meta in img_metas)
 
         # split batch bbox prediction back to each image
-        cls_score = bbox_results['cls_score']
+        cls_score = bbox_results['cls_score_fc']
         bbox_pred = bbox_results['bbox_pred']
         num_proposals_per_img = tuple(len(p) for p in proposals)
         rois = rois.split(num_proposals_per_img, 0)

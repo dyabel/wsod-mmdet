@@ -204,6 +204,7 @@ class WSOD_RPNHead(RPNTestMixin, AnchorHead):
                 losses: (dict[str, Tensor]): A dictionary of loss components.
                 proposal_list (list[Tensor]): Proposals of each image.
         """
+        #duyu
         x_strong = tuple([torch.unsqueeze(xx[0],0) for xx in x])
         x_weak = tuple([torch.unsqueeze(xx[1],0) for xx in x])
         outs_strong = self(x_strong)

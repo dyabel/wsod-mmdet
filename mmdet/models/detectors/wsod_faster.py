@@ -153,6 +153,7 @@ class WSOD_RPN(BaseDetector):
         x = self.extract_feat(img)
         losses = dict()
         gt_labels[1],_ = convert_label(gt_labels[1],num_cls[1])
+        gt_bboxes[1] = None
 
 
         # RPN forward and loss

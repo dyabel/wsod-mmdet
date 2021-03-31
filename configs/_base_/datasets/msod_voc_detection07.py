@@ -1,4 +1,5 @@
-dataset_type = 'VocDataset'
+dataset_type = 'VocMsodDataset'
+# data_root = '../data/VOCdevkit/VOC2012/'
 data_root = '../data/VOCdevkit/'
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
@@ -34,34 +35,19 @@ data = dict(
         type='RepeatDataset',
         times=3,
         dataset=dict(
-        type = dataset_type+'Reduce',
-        weak_ann_frac=5,
-        ann_file=[data_root + 'VOC2007/trainval.json',
-                  data_root + 'VOC2012/trainval.json'
-                  ],
-        img_prefix=[data_root + 'VOC2007/JPEGImages',
-                    data_root + 'VOC2012/JPEGImages'
-                    ],
-        # ann_file=[data_root + 'VOC2007/trainval.json',
-        #           data_root + 'VOC2012/train.json'
-        #           ],
-        # img_prefix=[data_root + 'VOC2007/JPEGImages',data_root + 'VOC2012/JPEGImages'],
-        pipeline=train_pipeline)
-    ),
-    val=dict(
         type=dataset_type,
-        ann_file=data_root + 'VOC2007/test.json',
-        # ann_file=[data_root + 'VOC2007/test.json',
-        #           data_root + 'VOC2012/val.json'],
-        # img_prefix=[data_root + 'VOC2007/JPEGImages',data_root + 'VOC2012/JPEGImages'],
+        ann_file=data_root + 'VOC2007/train.json',
+        img_prefix=data_root + 'VOC2007/JPEGImages',
+        weak_ann_frac=5,
+        pipeline=train_pipeline)),
+    val=dict(
+        type='VocMsodDatasetVal',
+        ann_file=data_root + 'VOC2007/val.json',
         img_prefix=data_root + 'VOC2007/JPEGImages',
         pipeline=test_pipeline),
     test=dict(
-        type=dataset_type,
+        type='VocMsodDatasetVal',
         ann_file=data_root + 'VOC2007/test.json',
-        # ann_file=[data_root + 'VOC2007/test.json',
-        #           data_root + 'VOC2012/val.json'],
-        # img_prefix=[data_root + 'VOC2007/JPEGImages',data_root + 'VOC2012/JPEGImages'],
         img_prefix=data_root + 'VOC2007/JPEGImages',
         pipeline=test_pipeline))
 evaluation = dict(interval=1, metric='mAP')

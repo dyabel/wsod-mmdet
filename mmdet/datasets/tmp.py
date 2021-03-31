@@ -14,7 +14,6 @@ from terminaltables import AsciiTable
 from mmdet.core import eval_recalls
 from .builder import DATASETS
 from .custom import CustomDataset
-from mmdet.core import eval_map,eval_recalls,convert_label
 
 try:
     import pycocotools
