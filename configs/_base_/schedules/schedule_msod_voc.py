@@ -14,4 +14,4 @@ lr_config = dict(
 #     warmup_iters=1000,
 #     warmup_ratio=1.0 / 10,
 #     min_lr_ratio=1e-5)
-total_epochs = 60
+total_epochs = 20

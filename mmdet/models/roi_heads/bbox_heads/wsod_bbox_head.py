@@ -483,8 +483,8 @@ class ConvFCWSODHead(BBoxHead):
 
         cls_score = torch.cat((min_np_probs_cls, bg_prob.unsqueeze(1)), dim=1)
 
-        # cls_score = self.fc_cls(x_cls) if self.with_cls else None
-        bbox_pred = self.fc_reg(x_reg) if self.with_reg else None
+        cls_score_fc = self.fc_cls_branch2(x_cls) if self.with_cls else None
+        bbox_pred = self.fc_reg_branch2(x_reg) if self.with_reg else None
 
         '''
         final_pos_reps = norm_pos_reps
@@ -510,7 +510,8 @@ class ConvFCWSODHead(BBoxHead):
         min_pos_pos_dist = min_pos_dist_cls[pos_roi_id]
         min_neg_neg_dist = min_neg_dist_cls[hard_neg_roi_id]
 
-        return cls_score, bbox_pred, min_pos_pos_dist, min_neg_neg_dist
+        # return cls_score, bbox_pred, min_pos_pos_dist, min_neg_neg_dist
+        return cls_score_fc,cls_score, bbox_pred, min_pos_pos_dist, min_neg_neg_dist
 
     @force_fp32(apply_to='cls_proposal_mat')
     def loss_weak_branch1(self,
@@ -533,19 +534,20 @@ class ConvFCWSODHead(BBoxHead):
     #yangyk
     @force_fp32(apply_to=('cls_score', 'bbox_pred'))
     def loss_strong_branch2(self,
-             cls_score,
-             bbox_pred,
-             rois,
-             labels,
-             label_weights,
-             bbox_targets,
-             bbox_weights,
-             reduction_override=None,
-             min_pos_pos_dist=None,
-             min_neg_neg_dist=None,
-             pos_roi_labels=None,
-             hard_neg_roi_labels=None
-             ):
+                            cls_score_fc,
+                            cls_score,
+                            bbox_pred,
+                            rois,
+                            labels,
+                            label_weights,
+                            bbox_targets,
+                            bbox_weights,
+                            reduction_override=None,
+                            min_pos_pos_dist=None,
+                            min_neg_neg_dist=None,
+                            pos_roi_labels=None,
+                            hard_neg_roi_labels=None
+                            ):
         losses = dict()
         if cls_score is not None:
             avg_factor = max(torch.sum(label_weights > 0).float().item(), 1.)
@@ -557,6 +559,16 @@ class ConvFCWSODHead(BBoxHead):
                     avg_factor=avg_factor,
                     reduction_override=reduction_override)
                 losses['acc_strong'] = accuracy(cls_score, labels)
+        if cls_score_fc is not None:
+            avg_factor = max(torch.sum(label_weights > 0).float().item(), 1.)
+            if cls_score.numel() > 0:
+                losses['loss_cls_fc'] = self.loss_cls(
+                    cls_score_fc,
+                    labels,
+                    label_weights,
+                    avg_factor=avg_factor,
+                    reduction_override=reduction_override)
+                losses['acc_fc'] = accuracy(cls_score_fc, labels)
         if bbox_pred is not None:
             bg_class_ind = self.num_classes
             # 0~self.num_classes-1 are FG, self.num_classes is BG
@@ -620,15 +632,16 @@ class ConvFCWSODHead(BBoxHead):
 
     @force_fp32(apply_to=('cls_score', 'bbox_pred'))
     def loss_weak_branch2(self,
-             cls_score,
-             labels,
-             label_weights,
-             reduction_override=None,
-             min_pos_pos_dist=None,
-             min_neg_neg_dist=None,
-             pos_roi_labels=None,
-             hard_neg_roi_labels=None
-             ):
+                          cls_score_fc,
+                          cls_score,
+                          labels,
+                          label_weights,
+                          reduction_override=None,
+                          min_pos_pos_dist=None,
+                          min_neg_neg_dist=None,
+                          pos_roi_labels=None,
+                          hard_neg_roi_labels=None
+                          ):
         losses = dict()
         if cls_score is not None:
             avg_factor = max(torch.sum(label_weights > 0).float().item(), 1.)
@@ -640,6 +653,16 @@ class ConvFCWSODHead(BBoxHead):
                     avg_factor=avg_factor,
                     reduction_override=reduction_override)
                 losses['acc_weak'] = accuracy(cls_score, labels)
+        if cls_score_fc is not None:
+            avg_factor = max(torch.sum(label_weights > 0).float().item(), 1.)
+            if cls_score.numel() > 0:
+                losses['loss_cls_fc'] = self.loss_cls(
+                    cls_score_fc,
+                    labels,
+                    label_weights,
+                    avg_factor=avg_factor,
+                    reduction_override=reduction_override)
+                losses['acc_fc'] = accuracy(cls_score_fc, labels)
             # if pos_roi_labels is not None:
             #     min_pos_pos_correct_cls = min_pos_pos_dist.new_full((pos_roi_labels.shape[0], ), -1 ,dtype=min_pos_pos_dist.dtype)
             #

@@ -17,6 +17,7 @@ from .coco_msod_dataset import CoCoMsodDataset
 from .voc_msod_dataset import VocMsodDataset
 from .voc_msod_dataset_val import VocMsodDatasetVal
 from .vocdataset import VocDataset
+from .vocdatasetreduce import VocDatasetReduce
 
 __all__ = [
     'CustomDataset', 'XMLDataset', 'CocoDataset', 'DeepFashionDataset',
@@ -25,5 +26,5 @@ __all__ = [
     'DistributedSampler', 'build_dataloader', 'ConcatDataset', 'RepeatDataset',
     'ClassBalancedDataset', 'WIDERFaceDataset', 'DATASETS', 'PIPELINES',
     'build_dataset', 'replace_ImageToTensor', 'get_loading_pipeline','CoCoMsodDataset','VocMsodDataset',
-    'VocMsodDatasetVal','VocDataset'
+    'VocMsodDatasetVal','VocDataset','VocDatasetReduce'
 ]
