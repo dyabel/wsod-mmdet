@@ -34,8 +34,9 @@ data = dict(
         type='RepeatDataset',
         times=3,
         dataset=dict(
-        type=dataset_type+'Reduce',
-        ann_file=data_root + 'train.json',
+        type=dataset_type,
+        # type=dataset_type+'Reduce',
+        ann_file=data_root + 'trainval.json',
         # ann_file=[data_root + 'VOC2007/trainval.json',
         #           data_root + 'VOC2012/train.json'
         #           ],
@@ -53,7 +54,7 @@ data = dict(
         pipeline=test_pipeline),
     test=dict(
         type=dataset_type,
-        ann_file=data_root + 'val.json',
+        ann_file=data_root + 'test.json',
         # ann_file=[data_root + 'VOC2007/test.json',
         #           data_root + 'VOC2012/val.json'],
         # img_prefix=[data_root + 'VOC2007/JPEGImages',data_root + 'VOC2012/JPEGImages'],

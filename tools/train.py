@@ -85,13 +85,13 @@ def parse_args():
 
 def main():
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
-    wandb.init(project="wsod-mmdet")
+    os.environ["WANDB_RUN_GROUP"] = "experiment-" + wandb.util.generate_id()
+    wandb.init(project="wsod-mmdet",group='DDP')
     args = parse_args()
     wandb.config.config_file = args.config
     wandb.config.work_dir = args.work_dir
     wandb.config.max_map = 0
-    # wandb.config.allow_val_change=True
-    wandb.config.update({'max_map':0},allow_val_change=True)
+    # wandb.config.update({'max_map':0},allow_val_change=True)
     wandb.config.tag = timestamp
     # wandb.config.update(allow_val_change=True)
 

@@ -9,6 +9,7 @@ import mmcv
 import warnings
 from mmcv.runner.utils import get_host_info
 import time
+import wandb
 from mmcv.runner.hooks import HOOKS, Hook
 from mmcv.runner.priority import get_priority
 from mmcv.runner.hooks import logger
@@ -75,6 +76,7 @@ class MyRunner(EpochBasedRunner):
            self.call_hook('before_run')
 
            while self.epoch < self._max_epochs:
+               wandb.config.update({'current_epoch':self.epoch},allow_val_change=True)
                for i, flow in enumerate(workflow):
                    mode, epochs = flow
                    if isinstance(mode, str):  # self.train()

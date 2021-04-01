@@ -543,9 +543,9 @@ class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
 
 
         loss_strong_branch1 = dict()
-        loss_strong_branch1['loss_cls_strong_branch1'] = loss_bbox_strong_branch1['loss_cls_strong']
-        loss_strong_branch1['loss_bbox_strong_branch1'] = loss_bbox_strong_branch1['loss_bbox_strong']
-        loss_strong_branch1['acc_strong_branch1'] = loss_bbox_strong_branch1['acc_strong']
+        loss_strong_branch1['loss_cls_strong_branch1_sp'] = loss_bbox_strong_branch1['loss_cls_strong']
+        loss_strong_branch1['loss_bbox_strong_branch1_sp'] = loss_bbox_strong_branch1['loss_bbox_strong']
+        loss_strong_branch1['acc_strong_branch1_sp'] = loss_bbox_strong_branch1['acc_strong']
         bbox_results_strong_branch1.update(loss_bbox_strong_branch1_sp=loss_strong_branch1)
 
         #calculate loss_weak_branch1

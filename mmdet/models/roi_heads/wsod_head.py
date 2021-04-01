@@ -193,9 +193,9 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                               gt_labels,
                               gt_bboxes_ignore=None,
                               gt_masks=None):
-        # losses_first_pass,oam_bboxes,oam_labels = self.forward_train_first_pass(x,img_metas,proposal_list,gt_bboxes,gt_labels,gt_bboxes_ignore,
-        #                                                gt_masks=None)
-        losses_second_pass = self.forward_train_second_pass(x,img_metas,proposal_list,gt_bboxes,gt_labels,gt_bboxes_ignore,
+        losses_first_pass,oam_bboxes,oam_labels = self.forward_train_first_pass(x,img_metas,proposal_list,gt_bboxes,gt_labels,gt_bboxes_ignore,
+                                                       gt_masks=None)
+        losses_second_pass = self.forward_train_second_pass(x,img_metas,oam_bboxes,gt_bboxes,gt_labels,gt_bboxes_ignore,
                                                                              gt_masks=None)
         losses = dict()
         # losses.update(losses_first_pass)
@@ -403,6 +403,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                                     nms_cfg={'iou_threshold':0.5},
                                                                     max_num=-1
                                                                     )
+        print(len(oam_labels_strong))
 
         #calculate loss_weak_branch1
         bbox_targets_weak = self.bbox_head.get_targets([sampling_results[1]], [gt_bboxes[1]],

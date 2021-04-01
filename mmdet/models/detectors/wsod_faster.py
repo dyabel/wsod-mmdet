@@ -150,6 +150,9 @@ class WSOD_RPN(BaseDetector):
         """
         # print('*'*100)
         # print(gt_labels)
+        if (strong_label==-1).any():
+            raise Exception
+        assert strong_label[0] and not strong_label[1]
         x = self.extract_feat(img)
         losses = dict()
         gt_labels[1],_ = convert_label(gt_labels[1],num_cls[1])

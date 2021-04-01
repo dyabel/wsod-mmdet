@@ -5,7 +5,8 @@ import sys
 import time
 
 #cmd = ' CUDA_VISIBLE_DEVICES=0,1,2,3 ./tools/dist_train.sh configs/faster_rcnn/faster_rcnn_r50_fpn_1x_voc.py 4 --work-dir ../work_dirs/faster_rcnn_voc'
-cmd = 'sh ./baseline.sh'
+# cmd = 'sh ./baseline.sh'
+cmd = 'sh ./exec.sh'
 
 
 def gpu_info():
@@ -18,7 +19,7 @@ def gpu_info():
 def narrow_setup(interval=2):
     gpu_power, gpu_memory = gpu_info()
     i = 0
-    while gpu_memory > 5000 or gpu_power > 40:  # set waiting condition
+    while gpu_memory > 4000 or gpu_power > 50:  # set waiting condition
         gpu_power, gpu_memory = gpu_info()
         i = i % 5
         symbol = 'monitoring: ' + '>' * i + ' ' * (10 - i - 1) + '|'

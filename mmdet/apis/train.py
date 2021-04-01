@@ -116,6 +116,7 @@ def train_detector(model,
                                    cfg.checkpoint_config, cfg.log_config,
                                    cfg.get('momentum_config', None))
     wandb.config.lr = cfg.optimizer['lr']
+    wandb.config.lr_config = cfg.lr_config['step']
     wandb.config.total_epochs = cfg.total_epochs
     if distributed:
         runner.register_hook(DistSamplerSeedHook())

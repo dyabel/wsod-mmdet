@@ -130,9 +130,9 @@ def binary_cross_entropy(pred,
     # loss_all_cls[loc] = torch.tensor(0.0).to(torch_device)
     # print(loss_all_cls)
     # loss = -torch.sum(loss_all_cls)
-    tmp = pred > 1
-    if tmp.any():
-        print('pred>1')
+    # tmp = pred > 1
+    # if tmp.any():
+    #     print('pred>1')
     pred = pred.clamp(1e-6,1-1e-6)
     label = label.clamp(0,1)
     loss = F.binary_cross_entropy(pred,label)

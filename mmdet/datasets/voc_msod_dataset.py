@@ -110,11 +110,20 @@ class VocMsodDataset(CustomDataset):
                 if i not in indices:
                     additional_cnt += 1
                     if additional_cnt&1:
+                        self.id_labelattr[self.img_ids[i]] = True
                         cnt += 1
+                    else:
+                        self.id_labelattr[self.img_ids[i]] = False
+
                     indices.append(i)
-                    print('append',i)
-            print('#'*100)
-            print('strong label percentage:',cnt/len(self.img_ids))
+            if additional_cnt&1:
+                indices = indices[0:-1]
+            strong_cnt = 0
+            for k,v in self.id_labelattr.items():
+                strong_cnt += v
+            assert strong_cnt==cnt,(strong_cnt,cnt)
+            wandb.config.indices_num = len(indices)
+            wandb.config.images_num = len(self.img_ids)
             wandb.config.strong_label_percentage = cnt/len(self.img_ids)
             random_indices = torch.tensor(indices)
             # random_indices = random_indices[0:4200]
@@ -532,6 +541,7 @@ class VocMsodDataset(CustomDataset):
         # if self.id_labelattr[img_info['id']] == -1:
         #     self.id_labelattr[img_info['id']] = True
         #     print('error')
+        results['strong_label'] = self.id_labelattr[img_info['id']]
         # if self.id_labelattr[img_info['id']]:
         #     results['strong_label'] = True
         # elif self.id_labelattr[img_info['id']]:
