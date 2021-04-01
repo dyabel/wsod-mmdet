@@ -16,6 +16,7 @@ from mmdet.apis import set_random_seed, train_detector
 from mmdet.datasets import build_dataset
 from mmdet.models import build_detector
 from mmdet.utils import collect_env, get_root_logger
+import fitlog
 
 
 def parse_args():
@@ -84,7 +85,10 @@ def parse_args():
 
 
 def main():
+    fitlog.set_log_dir("logs/")
     args = parse_args()
+    fitlog.add_hyper(args)
+    fitlog.add_hyper_in_file(__file__)
 
     cfg = Config.fromfile(args.config)
     if args.cfg_options is not None:
@@ -129,6 +133,7 @@ def main():
     # init the logger before other steps
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
     log_file = osp.join(cfg.work_dir, f'{timestamp}.log')
+    fitlog.add_hyper({"log":log_file})
     logger = get_root_logger(log_file=log_file, log_level=cfg.log_level)
 
     # init the meta dict to record some important information such as
@@ -184,6 +189,6 @@ def main():
         timestamp=timestamp,
         meta=meta)
 
-
+    fitlog.finish()
 if __name__ == '__main__':
     main()

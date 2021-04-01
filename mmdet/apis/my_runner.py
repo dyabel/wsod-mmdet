@@ -11,6 +11,7 @@ from mmcv.runner.utils import get_host_info
 import time
 from mmcv.runner.hooks import HOOKS, Hook
 from mmcv.runner.priority import get_priority
+from mmcv.runner.hooks import logger
 # from mmcv.runner.hooks.optimizer import OptimizerHook
 class MyRunner(EpochBasedRunner):
     def __init__(self,*args,**kwargs):

@@ -11,6 +11,6 @@ dist_params = dict(backend='nccl')
 log_level = 'INFO'
 load_from = None
 # resume_from = 'work_dirs/faster_rcnn_r50_fpn_1x_coco/epoch_4.pth'
-# resume_from = '/data/dy/work_dirs/faster_rcnn_voc/epoch_12.pth'
-resume_from = None
+resume_from = '../work_dirs/faster_rcnn_voc/latest.pth'
+# resume_from = None
 workflow = [('train', 1)]

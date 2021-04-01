@@ -213,7 +213,7 @@ class NPConvFCWSODHead(BBoxHead):
 
 
     def init_weights(self):
-        super(ConvFCWSODHead, self).init_weights()
+        super(NPConvFCWSODHead, self).init_weights()
         # conv layers are already initialized by ConvModule
         for module_list in [self.shared_fcs, self.cls_fcs, self.reg_fcs]:
             for m in module_list.modules():
