@@ -91,6 +91,7 @@ class VocMsodDataset(CustomDataset):
                         self.cat_weak_ids[i].append(j)
                         self.id_labelattr[j] = False
             assert len(self.id_labelattr)==len(self.img_ids)
+            print('img_num:',len(self.img_ids))
             print('allocating completed')
             indices = []
             cnt = 0
