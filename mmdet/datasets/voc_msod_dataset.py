@@ -92,8 +92,10 @@ class VocMsodDataset(CustomDataset):
             assert len(self.id_labelattr)==len(self.img_ids)
             print('allocating completed')
             indices = []
+            cnt = 0
             for i in self.cat_strong_ids.keys():
                 num_strong = len(self.cat_strong_ids[i])
+                cnt += num_strong
                 if num_strong == 0:
                     continue
                 for j in range(len(self.cat_weak_ids[i])):
@@ -101,10 +103,16 @@ class VocMsodDataset(CustomDataset):
                                     self.id_idx[self.cat_weak_ids[i][j]]])
             indices = np.concatenate(indices)
             indices = indices.astype(np.int64).tolist()
+            additional_cnt = 0
             for i in range(len(self.img_ids)):
                 if i not in indices:
+                    additional_cnt += 1
+                    if additional_cnt&1:
+                        cnt += 1
                     indices.append(i)
                     print('append',i)
+            print('#'*100)
+            print('strong label percentage:',cnt/len(self.img_ids))
             random_indices = torch.tensor(indices)
             # random_indices = random_indices[0:4200]
 
