@@ -474,7 +474,6 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
     def _bbox_forward_train_second_pass(self, x, sampling_results, gt_bboxes, gt_labels,
                             img_metas,gt_bboxes_ignore=None):
         """Run forward function and calculate loss for box head in training."""
-        torch_device = gt_labels[0].get_device()
 
         x_strong = tuple([torch.unsqueeze(xx[0],0) for xx in x])
         x_weak = tuple([torch.unsqueeze(xx[1],0) for xx in x])
@@ -508,8 +507,8 @@ class WsodContrastHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         loss_strong_branch1['acc_strong_branch1_sp'] = loss_bbox_strong_branch1['acc_strong']
         bbox_results_strong_branch1.update(loss_bbox_strong_branch1_sp=loss_strong_branch1)
         #calculate loss_weak_branch1
-        bbox_targets_weak_branch1 = self.bbox_head.get_targets([sampling_results[1]], [gt_bboxes[1]],
-                                                       [gt_labels[1]], self.train_cfg)
+        # bbox_targets_weak_branch1 = self.bbox_head.get_targets([sampling_results[1]], [gt_bboxes[1]],
+        #                                                [gt_labels[1]], self.train_cfg)
         bbox_results_weak_pseudo = self._bbox_forward_strong_branch1(bbox_feats_weak)
         bbox_results_weak_branch1 = self._bbox_forward_weak(bbox_feats_weak)
         # loss_bbox_weak_branch1 = self.bbox_head.loss_weak(bbox_results_weak_branch1['cls_proposal_mat'],
