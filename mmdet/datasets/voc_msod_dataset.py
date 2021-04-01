@@ -17,6 +17,7 @@ from .builder import DATASETS
 from .custom import CustomDataset
 import random
 import torch
+import wandb
 
 try:
     import pycocotools
@@ -113,6 +114,7 @@ class VocMsodDataset(CustomDataset):
                     print('append',i)
             print('#'*100)
             print('strong label percentage:',cnt/len(self.img_ids))
+            wandb.config.strong_label_percentage = cnt/len(self.img_ids)
             random_indices = torch.tensor(indices)
             # random_indices = random_indices[0:4200]
 

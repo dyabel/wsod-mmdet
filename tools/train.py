@@ -16,8 +16,7 @@ from mmdet.apis import set_random_seed, train_detector
 from mmdet.datasets import build_dataset
 from mmdet.models import build_detector
 from mmdet.utils import collect_env, get_root_logger
-import fitlog
-
+import wandb
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a detector')
@@ -85,10 +84,12 @@ def parse_args():
 
 
 def main():
-    fitlog.set_log_dir("logs/")
+    wandb.init(project="wsod-mmdet")
     args = parse_args()
-    fitlog.add_hyper(args)
-    fitlog.add_hyper_in_file(__file__)
+    wandb.config.config_file = args.config
+    wandb.config.work_dir = args.work_dir
+    wandb.config.max_map = 0
+
 
     cfg = Config.fromfile(args.config)
     if args.cfg_options is not None:
@@ -132,8 +133,11 @@ def main():
     cfg.dump(osp.join(cfg.work_dir, osp.basename(args.config)))
     # init the logger before other steps
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+
+    wandb.config.time = timestamp
+
     log_file = osp.join(cfg.work_dir, f'{timestamp}.log')
-    fitlog.add_hyper({"log":log_file})
+    wandb.config.logfile = log_file
     logger = get_root_logger(log_file=log_file, log_level=cfg.log_level)
 
     # init the meta dict to record some important information such as
@@ -164,6 +168,15 @@ def main():
         cfg.model,
         train_cfg=cfg.get('train_cfg'),
         test_cfg=cfg.get('test_cfg'))
+    wandb.config.val_data = cfg.data.val['ann_file']
+    if cfg.data.train['type'] == 'RepeatDataset':
+        wandb.config.train_data_type = cfg.data.train['dataset']['type']
+        wandb.config.repeat_times = cfg.data.train['times']
+        wandb.config.ann_file = cfg.data.train['dataset']['ann_file']
+    else:
+        wandb.config.train_data_type = cfg.data.train['type']
+        wandb.config.repeat_times = 1
+        wandb.config.ann_file = cfg.data.train['ann_file']
 
     datasets = [build_dataset(cfg.data.train)]
 
@@ -188,7 +201,7 @@ def main():
         validate=(not args.no_validate),
         timestamp=timestamp,
         meta=meta)
-
-    fitlog.finish()
+    wandb.save(os.path.join(wandb.config.work_dir,'mymodel.h5'))
+    # fitlog.finish()
 if __name__ == '__main__':
     main()

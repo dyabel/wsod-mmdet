@@ -104,8 +104,8 @@ class WsodDistributedGroupSampler(Sampler):
         # indices = indices.astype(np.int64).tolist()
         # # self.num_samples = len(indices)//2
 
-        g = torch.Generator()
-        g.manual_seed(self.epoch)
+        # g = torch.Generator()
+        # g.manual_seed(self.epoch)
         indices = []
         for i, size in enumerate(self.group_sizes):
             if size > 0:
@@ -127,8 +127,9 @@ class WsodDistributedGroupSampler(Sampler):
 
         indices = [
             indices[j] for i in list(
-                torch.randperm(
-                    len(indices) // self.samples_per_gpu, generator=g))
+                # torch.randperm(
+                #     len(indices) // self.samples_per_gpu, generator=g))
+                torch.arange(len(indices) // self.samples_per_gpu))
             for j in range(i * self.samples_per_gpu, (i + 1) *
                            self.samples_per_gpu)
         ]

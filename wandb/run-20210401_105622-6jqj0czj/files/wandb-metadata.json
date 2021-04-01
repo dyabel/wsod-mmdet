@@ -1,0 +1,31 @@
+{
+    "os": "Linux-5.0.0-23-generic-x86_64-with-debian-buster-sid",
+    "python": "3.7.10",
+    "heartbeatAt": "2021-04-01T02:56:25.089159",
+    "startedAt": "2021-04-01T02:56:22.761305",
+    "docker": null,
+    "gpu": "GeForce RTX 2080 Ti",
+    "gpu_count": 8,
+    "cpu_count": 56,
+    "cuda": "9.0.176",
+    "args": [
+        "--local_rank=0",
+        "configs/wsod/wsod_faster_r50_fpn_1x_voc.py",
+        "--launcher",
+        "pytorch",
+        "--work-dir",
+        "/data1/dataset/dy/work_dirs/wsod_faster_voc07"
+    ],
+    "state": "running",
+    "program": "./tools/train.py",
+    "codePath": "tools/train.py",
+    "git": {
+        "remote": "git@github.com:dyabel/wsod-mmdet.git",
+        "commit": "e32beb42f6f319d3ef187f38c634147f4c9a1bfb"
+    },
+    "email": "abelazady@foxmail.com",
+    "root": "/home/dy20/wsod-mmdet",
+    "host": "zkti",
+    "username": "dy20",
+    "executable": "/home/dy20/anaconda3/envs/open-mmlab/bin/python"
+}

@@ -7,6 +7,7 @@ from terminaltables import AsciiTable
 
 from .bbox_overlaps import bbox_overlaps
 from .class_names import get_classes
+import wandb
 
 
 def average_precision(recalls, precisions, mode='area'):
@@ -464,6 +465,8 @@ def print_map_summary(mean_ap,
             ]
             table_data.append(row_data)
         table_data.append(['mAP', '', '', '', f'{mean_ap[i]:.3f}'])
+        if mean_ap[i] > wandb.config.max_map:
+            wandb.config.max_map = mean_ap[i]
         table = AsciiTable(table_data)
         table.inner_footing_row_border = True
         print_log('\n' + table.table, logger=logger)

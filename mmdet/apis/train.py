@@ -13,6 +13,7 @@ from mmdet.datasets import (build_dataloader, build_dataset,
                             replace_ImageToTensor)
 from mmdet.utils import get_root_logger
 from .my_runner import MyRunner
+import wandb
 
 
 def set_random_seed(seed, deterministic=False):
@@ -110,9 +111,12 @@ def train_detector(model,
         optimizer_config = cfg.optimizer_config
 
     # register hooks
+
     runner.register_training_hooks(cfg.lr_config, optimizer_config,
                                    cfg.checkpoint_config, cfg.log_config,
                                    cfg.get('momentum_config', None))
+    wandb.config.lr = cfg.optimizer['lr']
+    wandb.config.total_epochs = cfg.total_epochs
     if distributed:
         runner.register_hook(DistSamplerSeedHook())
 
