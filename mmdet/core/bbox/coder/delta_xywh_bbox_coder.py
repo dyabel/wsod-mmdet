@@ -68,7 +68,7 @@ class DeltaXYWHBBoxCoder(BaseBBoxCoder):
             torch.Tensor: Decoded boxes.
         """
 
-        assert pred_bboxes.size(0) == bboxes.size(0)
+        assert pred_bboxes.size(0) == bboxes.size(0),(pred_bboxes.size(0),bboxes.size(0))
         decoded_bboxes = delta2bbox(bboxes, pred_bboxes, self.means, self.stds,
                                     max_shape, wh_ratio_clip, self.clip_border)
 

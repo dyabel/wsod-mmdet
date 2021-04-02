@@ -27,7 +27,8 @@ def bbox_select_per_class_fixnum(multi_bboxes,
         tuple: (bboxes, labels, indices (optional)), tensors of shape (k, 5),
             (k), and (k). Labels are 0-based.
     """
-    # multi_scores = torch.sigmoid(multi_scores)
+
+    # print('22222222222:',len(multi_bboxes),multi_scores.size())
     num_classes = multi_scores.size(1) - 1
     multi_scores = torch.softmax(multi_scores,dim=1)
     # exclude background category
@@ -37,7 +38,6 @@ def bbox_select_per_class_fixnum(multi_bboxes,
     else:
         bboxes = multi_bboxes[:, None].expand(
             multi_scores.size(0), num_classes, 4)
-    # print(bboxes.shape)
 
     scores = multi_scores[:, :-1]
 

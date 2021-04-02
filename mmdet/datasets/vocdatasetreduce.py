@@ -17,6 +17,7 @@ from .builder import DATASETS
 from .custom import CustomDataset
 import random
 import torch
+import wandb
 
 try:
     import pycocotools
@@ -51,8 +52,8 @@ class VocDatasetReduce(CustomDataset):
         super(VocDatasetReduce,self).__init__(ann_file,pipeline,classes=classes,data_root=data_root,
                                          img_prefix=img_prefix,seg_prefix=seg_prefix,proposal_file=proposal_file,
                                          test_mode=test_mode,filter_empty_gt=filter_empty_gt)
-        print('classes',classes)
         # filter images too small and containing no annotations
+        print('classes',classes)
         print('weak_ann_frac%d'%weak_ann_frac)
         if 'VOC2007' in self.img_prefix:
             self.year = 2007
@@ -75,7 +76,6 @@ class VocDatasetReduce(CustomDataset):
                 self.id_labelattr[i] = -1
             for i in self.coco.catToImgs.keys():
                 self.coco.catToImgs[i] = list(set(self.coco.catToImgs[i]))
-                # cat_strong_image_ids =self.coco.catToImgs[i][0:(len(self.coco.catToImgs[i])//weak_ann_frac)]
                 cat_strong_image_ids =self.coco.catToImgs[i][0:(len(self.coco.catToImgs[i])//weak_ann_frac+len(self.coco.catToImgs[i])%weak_ann_frac)]
                 self.cat_weak_ids[i] = []
                 self.cat_strong_ids[i] = []
@@ -91,63 +91,48 @@ class VocDatasetReduce(CustomDataset):
                         self.cat_weak_ids[i].append(j)
                         self.id_labelattr[j] = False
             assert len(self.id_labelattr)==len(self.img_ids)
+            print('img_num:',len(self.img_ids))
             print('allocating completed')
             indices = []
+            cnt = 0
             ind = []
-            # indd = []
-            # for i in self.cat_strong_ids.keys():
-            #     for j in self.cat_strong_ids[i]:
-            #         indd.append(self.id_idx[j])
-            # for i in self.cat_weak_ids.keys():
-            #     for j in self.cat_weak_ids[i]:
-            #         indd.append(self.id_idx[j])
-
             for i in self.cat_strong_ids.keys():
                 num_strong = len(self.cat_strong_ids[i])
+                for k in self.cat_strong_ids[i]:
+                    ind.append(self.id_idx[k])
+                cnt += num_strong
                 if num_strong == 0:
                     continue
-                assert len(self.cat_strong_ids[i])<=len(self.cat_weak_ids[i])
                 for j in range(len(self.cat_weak_ids[i])):
                     indices.append([self.id_idx[self.cat_strong_ids[i][j % num_strong]],
                                     self.id_idx[self.cat_weak_ids[i][j]]])
-                    ind.append(self.id_idx[self.cat_strong_ids[i][j % num_strong]])
+
             indices = np.concatenate(indices)
             indices = indices.astype(np.int64).tolist()
-
-            # for i in range(len(self.img_ids)):
-            #     if i not in indices:
-            #         ind.append(i)
-            #         print('append',i)
-            # indices = np.concatenate(indices)
-            # indices = indices.astype(np.int64).tolist()
-            cnt = 0
+            additional_cnt = 0
             for i in range(len(self.img_ids)):
-                # if i not in indd:
-                #     print('%d not in indd'%i)
-                #     raise Exception
                 if i not in indices:
-                    cnt += 1
-                    if cnt&1 == 1:
+                    additional_cnt += 1
+                    if additional_cnt&1:
                         ind.append(i)
-                        print('append',i)
-            ind = np.unique(ind).astype(np.int64).tolist()
+                        self.id_labelattr[self.img_ids[i]] = True
+                        cnt += 1
+                    else:
+                        self.id_labelattr[self.img_ids[i]] = False
+
+                    indices.append(i)
+            if additional_cnt&1:
+                indices = indices[0:-1]
+            strong_cnt = 0
+            ind = list(set(ind))
+            for k,v in self.id_labelattr.items():
+                strong_cnt += v
+            assert strong_cnt==cnt,(strong_cnt,cnt)
+            wandb.config.indices_num = len(indices)
+            wandb.config.images_num = len(self.img_ids)
+            wandb.config.strong_label_percentage = len(ind)/len(self.img_ids)
+
             random_indices = torch.tensor(ind)
-            # random_indices = random_indices[0:4200]
-
-
-            # random_indice = torch.randperm(len(self.img_ids))
-            # random_indice = []
-            # for i in range(len(self.img_ids)):
-            #     random_indice.append([1,i])
-            # np.random.shuffle(random_indice)
-            # random_indices = np.concatenate(random_indice)
-
-            # random_indice = torch.cat((random_indice,torch.randperm(1860)))
-            # random_indices=torch.unique(random_indices)
-            # assert  (np.unique(random_indices.numpy()) == np.unique(random_indice.numpy())).all()
-            # random_indices = random_indice
-            # print(len(self.img_ids))
-            # print(len(random_indices))
             self.data_infos = [self.data_infos[i] for i in valid_inds]
             self.data_infos = [self.data_infos[i] for i in random_indices]
             if self.proposals is not None:
@@ -547,6 +532,7 @@ class VocDatasetReduce(CustomDataset):
         # if self.id_labelattr[img_info['id']] == -1:
         #     self.id_labelattr[img_info['id']] = True
         #     print('error')
+        # results['strong_label'] = self.id_labelattr[img_info['id']]
         # if self.id_labelattr[img_info['id']]:
         #     results['strong_label'] = True
         # elif self.id_labelattr[img_info['id']]:
