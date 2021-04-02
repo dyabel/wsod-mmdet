@@ -10,9 +10,11 @@ from .score_hlr_sampler import ScoreHLRSampler
 from .embed_base_sampler import EmbedBaseSampler
 from .embed_random_sampler import EmbedRandomSampler
 from .embed_sampling_result import EmbedSamplingResult
+from .second_pass_sampler import SecondPassSampler
 
 __all__ = [
     'BaseSampler', 'PseudoSampler', 'RandomSampler',
     'InstanceBalancedPosSampler', 'IoUBalancedNegSampler', 'CombinedSampler',
-    'OHEMSampler', 'SamplingResult', 'ScoreHLRSampler','EmbedBaseSampler','EmbedRandomSampler','EmbedSamplingResult'
+    'OHEMSampler', 'SamplingResult', 'ScoreHLRSampler','EmbedBaseSampler','EmbedRandomSampler',
+    'EmbedSamplingResult','SecondPassSampler'
 ]

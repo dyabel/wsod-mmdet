@@ -86,7 +86,7 @@ def parse_args():
 def main():
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
     os.environ["WANDB_RUN_GROUP"] = "experiment-" + wandb.util.generate_id()
-    wandb.init(project="test")
+    wandb.init(project="debug")
     # wandb.init(project="wsod-mmdet",group='DDP')
     args = parse_args()
     wandb.config.config_file = args.config
