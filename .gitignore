@@ -9,6 +9,7 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+wandb/
 develop-eggs/
 dist/
 downloads/
@@ -123,3 +124,7 @@ work_dirs/
 faster_rcnn_r101_fpn_1x_results
 faster_rcnn_r50_fpn_1x_results
 
+
+.fitlog
+.fitconfig
+logs
