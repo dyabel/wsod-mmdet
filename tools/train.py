@@ -22,6 +22,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train a detector')
     parser.add_argument('config', help='train config file path')
     parser.add_argument('--work-dir', help='the dir to save logs and models')
+    parser.add_argument('--name',default='wsod-mmdet')
     parser.add_argument(
         '--resume-from', help='the checkpoint file to resume from')
     parser.add_argument(
@@ -86,9 +87,9 @@ def parse_args():
 def main():
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
     os.environ["WANDB_RUN_GROUP"] = "experiment-" + wandb.util.generate_id()
-    wandb.init(project="debug")
-    # wandb.init(project="wsod-mmdet",group='DDP')
     args = parse_args()
+    wandb.init(project=args.name)
+    # wandb.init(project="wsod-mmdet",group='DDP')
     wandb.config.config_file = args.config
     wandb.config.work_dir = args.work_dir
     wandb.config.max_map = 0
@@ -208,5 +209,6 @@ def main():
         meta=meta)
     # wandb.save(os.path.join(wandb.config.work_dir,'mymodel.h5'))
     # fitlog.finish()
+    wandb.save("mymodel.h5")
 if __name__ == '__main__':
     main()

@@ -34,6 +34,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                  test_cfg=test_cfg)
         wandb.config.oam_max_num=8
         wandb.config.score_thr=0.01
+        wandb.config.empty_cf = 100000000
         # self.init_contrast_head(contrast_head)
 
     def init_assigner_sampler(self):
@@ -158,7 +159,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         oam_bboxes, oam_labels = bboxes,labels
         if len(labels) == 0:
             # print('empty oam')
-            return 1000,[bboxes],[labels]
+            return wandb.config.empty_cf,[bboxes],[labels]
 
         # begin iter
         k = 0
