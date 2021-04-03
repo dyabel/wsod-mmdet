@@ -21,7 +21,7 @@ def visualize_oam_boxes(bboxes,
                         show_score_thr=0.3):
     img_tensor = img_tensor.unsqueeze(0)
     img = tensor2imgs(img_tensor,**img_metas[1]['img_norm_cfg'])[0]
-    h, w, _ = img_metas[0]['img_shape']
+    h, w, _ = img_metas[1]['img_shape']
     img_show = img[:h, :w, :]
     ori_h, ori_w = img_metas[1]['ori_shape'][:-1]
     img_show = mmcv.imresize(img_show, (ori_w, ori_h))

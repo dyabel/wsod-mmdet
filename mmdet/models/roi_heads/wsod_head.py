@@ -32,9 +32,10 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                  shared_head=shared_head,
                  train_cfg=train_cfg,
                  test_cfg=test_cfg)
-        wandb.config.oam_max_num=8
-        wandb.config.score_thr=0.01
-        wandb.config.empty_cf = 100000000
+        wandb.config.oam_max_num=10
+        wandb.config.score_thr1=0.05
+        wandb.config.score_thr2=0.05
+        wandb.config.empty_cf = 30
         # self.init_contrast_head(contrast_head)
 
     def init_assigner_sampler(self):
@@ -131,19 +132,6 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                     break
         if len(matched)!=len(labels2):
             return False
-
-
-
-
-        # flag = False
-        # for i,box1 in enumerate(bboxes1):
-        #     if labels1[i] != labels2[i]:
-        #         return False
-        #     for box2 in bboxes2:
-        #         if bbox_overlaps(box1.unsqueeze(0).cpu().numpy(),box2.unsqueeze(0).cpu().numpy())[0][0] > 0.5:
-        #             flag = True
-        #             break
-        #     if not flag:  return False
         return True
 
 
@@ -178,7 +166,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             else:
                 count = 0
             oam_bboxes, oam_labels = oam_bboxes_next, oam_labels_next
-        return T-2,[oam_bboxes],[oam_labels]
+        return T,[oam_bboxes],[oam_labels]
     #duyu
     @torch.no_grad()
     def oam_forward(self,x,oam_bboxes,img_level_label,img_metas):
@@ -204,7 +192,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             bboxes,
             bbox_results['cls_score'],
             img_level_label,
-            score_thr=0,
+            score_thr=wandb.config.score_thr2,
             nms_cfg={'iou_threshold': 0.5},
             max_num=10
         )
@@ -236,7 +224,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         # proposal_list
         # losses_second_pass = self.forward_train_second_pass(x,img_metas,proposal_list,gt_bboxes,gt_labels,gt_bboxes_ignore,
         # print(oam_bboxes[0][0])
-        oam_confidence,oam_bboxes,oam_labels = self.OAM_Confidence(x,
+        oam_confidence,_,_ = self.OAM_Confidence(x,
                                             img_metas,
                                             oam_bboxes[0],
                                             oam_labels[0],
@@ -245,9 +233,10 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                              )
         gt_bboxes[1] = oam_bboxes[0]
         gt_labels[1] = oam_labels[0]
-        if oam_confidence==1:
+        print(gt_bboxes[1][0])
+        if oam_confidence==3:
             visualize_oam_boxes(oam_bboxes[0],oam_labels[0],img[1],img_metas,
-                                win_name=str(oam_confidence),show=False,
+                                win_name=str(1/(oam_confidence-2)),show=False,
                                 out_dir='../work_dirs/oam_bboxes1/',show_score_thr=0)
 
         # print(proposal_list[0][0],gt_bboxes[0][0])
@@ -534,9 +523,9 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                                     bboxes_strong,
                                                                     bbox_results_strong['cls_score'],
                                                                     img_level_label_for_strong,
-                                                                    score_thr=0,
+                                                                    score_thr=wandb.config.score_thr1,
                                                                     nms_cfg={'iou_threshold':0.5},
-                                                                    num=bbox_results_strong['cls_score'].size(0)//2
+                                                                    fix_num=bbox_results_strong['cls_score'].size(0)//2
                                                                     )
 
         # print('oam_labels num for strong first pass:',len(oam_labels_strong))
@@ -567,9 +556,9 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         oam_bboxes_weak,oam_labels_weak = bbox_select_per_class_fixnum(bboxes_weak,
                                                                     bbox_results_weak_pseudo['cls_score'],
                                                                     gt_labels[1],
-                                                                    score_thr=0.1,
+                                                                    score_thr=wandb.config.score_thr1,
                                                                     nms_cfg={'iou_threshold':0.5},
-                                                                    num=bbox_results_weak_pseudo['cls_score'].size(0)//2
+                                                                    fix_num=bbox_results_weak_pseudo['cls_score'].size(0)//2
                                                                     )
         # print(oam_bboxes_weak[0])
 
@@ -642,7 +631,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                                  bboxes_weak,
                                                                  bbox_results_weak_pseudo['cls_score'],
                                                                  gt_labels[1],
-                                                                 score_thr=wandb.config.score_thr,
+                                                                 score_thr=wandb.config.score_thr2,
                                                                  nms_cfg={'iou_threshold': 0.5},
                                                                  max_num=wandb.config.oam_max_num
                                                                  )
@@ -783,17 +772,37 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         acc_weak = accuracy(bbox_results_weak_branch2['cls_score'],labels)
 
         loss_bbox_weak_branch2 = dict()
-        # loss_bbox_weak_branch2 = self.bbox_head.loss_strong(bbox_results_weak_branch2['cls_score'],
-        #                                                       bbox_results_weak_branch2['bbox_pred'],
-        #                                                       rois_weak,
-        #                                                       *bbox_targets_weak_branch2)
-        loss_bbox_weak_branch2['loss_cls_weak_branch2'] = self.bbox_head.loss_cls(bbox_results_weak_branch2['cls_score'],
-                                                                                  labels,
-                                                                                  label_weights,
-                                                                                  avg_factor=avg_factor,
-                                                                                  reduction_override=None)/oam_confidence
-        loss_bbox_weak_branch2['acc_weak_branch2'] = acc_weak
-        bbox_results_weak_branch2.update(loss_bbox_weak_branch2=loss_bbox_weak_branch2)
+        if oam_confidence>3:
+            # loss_bbox_weak_branch2['loss_cls_weak_branch2'] = self.bbox_head.loss_cls(bbox_results_weak_branch2['cls_score'],
+            #                                                                           labels,
+            #                                                                           label_weights,
+            #                                                                           avg_factor=avg_factor,
+            #                                                                           reduction_override=None)*0
+            loss_bbox_weak_branch2 = self.bbox_head.loss_strong(bbox_results_weak_branch2['cls_score'],
+                                                                bbox_results_weak_branch2['bbox_pred'],
+                                                                rois_weak,
+                                                                *bbox_targets_weak_branch2)
+            loss_weak_branch2 = dict()
+            loss_weak_branch2['loss_cls_weak_branch2'] = loss_bbox_weak_branch2['loss_cls_weak']
+            loss_weak_branch2['acc_weak_branch2'] = loss_bbox_weak_branch2['acc_weak']
+            loss_weak_branch2['loss_bbox_weak_branch2'] = loss_bbox_weak_branch2['loss_bbox_weak']
+        else:
+            # loss_bbox_weak_branch2['loss_cls_weak_branch2'] = self.bbox_head.loss_cls(bbox_results_weak_branch2['cls_score'],
+            #                                                                       labels,
+            #                                                                       label_weights,
+            #                                                                       avg_factor=avg_factor,
+            #                                                                       reduction_override=None)/(oam_confidence-2)
+            # loss_bbox_weak_branch2['acc_weak_branch2'] = acc_weak
+            loss_bbox_weak_branch2 = self.bbox_head.loss_strong(bbox_results_weak_branch2['cls_score'],
+                                                                  bbox_results_weak_branch2['bbox_pred'],
+                                                                  rois_weak,
+                                                                  *bbox_targets_weak_branch2)
+            loss_weak_branch2 = dict()
+            loss_weak_branch2['loss_cls_weak_branch2'] = loss_bbox_weak_branch2['loss_cls_weak']
+            loss_weak_branch2['acc_weak_branch2'] = loss_bbox_weak_branch2['acc_weak']
+            loss_weak_branch2['loss_bbox_weak_branch2'] = loss_bbox_weak_branch2['loss_bbox_weak']
+        bbox_results_weak_branch2.update(loss_bbox_weak_branch2=loss_weak_branch2)
+        # bbox_results_weak_branch2.update(loss_bbox_weak_branch2=loss_bbox_weak_branch2)
 
         return  bbox_results_weak_branch2,bbox_results_strong_branch2
                # contrastive_losses

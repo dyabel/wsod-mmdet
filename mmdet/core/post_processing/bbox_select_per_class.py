@@ -9,7 +9,7 @@ def bbox_select_per_class_fixnum(multi_bboxes,
                    img_level_label,
                    score_thr,
                    nms_cfg,
-                   num=-1,
+                   fix_num=-1,
                    ):
     """ bbox selection per class for first pass of BBA
 
@@ -72,7 +72,7 @@ def bbox_select_per_class_fixnum(multi_bboxes,
     #     dets = dets[:max_num]
     #     keep = keep[:max_num]
 
-    return bboxes[idx[-num::]],labels[idx[-num::]]
+    return bboxes[idx[-fix_num::]],labels[idx[-fix_num::]]
 
 @torch.no_grad()
 def bbox_select_per_class(multi_bboxes,

@@ -8,6 +8,7 @@ from mmcv import Config
 from mmdet.core.utils import mask2ndarray
 from mmdet.core.visualization import imshow_det_bboxes
 from mmdet.datasets.builder import build_dataset
+from mmdet.utils import visualize_oam_boxes,iou
 
 
 def parse_args():
@@ -20,7 +21,7 @@ def parse_args():
         default=['DefaultFormatBundle', 'Normalize', 'Collect'],
         help='skip some useless pipeline')
     parser.add_argument(
-        '--output-dir',
+        '--output_dir',
         default=None,
         type=str,
         help='If there is no display interface, you can save it')
@@ -47,12 +48,19 @@ def retrieve_data_cfg(config_path, skip_type):
 def main():
     args = parse_args()
     cfg = retrieve_data_cfg(args.config, args.skip_type)
+    # output_dir = args.output_dir
 
     dataset = build_dataset(cfg.data.train)
 
     progress_bar = mmcv.ProgressBar(len(dataset))
 
-    for item in dataset:
+    for iitem in dataset:
+        # print(item['img_metas'].data)
+        try:
+            item = iitem['img_metas'].data
+        except:
+            print(iitem)
+
         filename = os.path.join(args.output_dir,
                                 Path(item['filename']).name
                                 ) if args.output_dir is not None else None
@@ -60,18 +68,22 @@ def main():
         gt_masks = item.get('gt_masks', None)
         if gt_masks is not None:
             gt_masks = mask2ndarray(gt_masks)
-
-        imshow_det_bboxes(
-            item['img'],
-            item['gt_bboxes'],
-            item['gt_labels'],
-            gt_masks,
-            class_names=dataset.CLASSES,
-            show=not args.not_show,
-            wait_time=args.show_interval,
-            out_file=filename,
-            bbox_color=(255, 102, 61),
-            text_color=(255, 102, 61))
+        # print(iitem['img'].data)
+        # print(iitem['img_metas'])
+        visualize_oam_boxes(iitem['gt_bboxes'].data, iitem['gt_labels'].data, iitem['img'].data, [1,iitem['img_metas'].data],
+                            win_name=str(1), show=False,
+                            out_dir=args.output_dir, show_score_thr=0)
+        # imshow_det_bboxes(
+        #     iitem['img'],
+        #     iitem['gt_bboxes'].data,
+        #     iitem['gt_labels'].data,
+        #     gt_masks,
+        #     class_names=dataset.CLASSES,
+        #     show=not args.not_show,
+        #     wait_time=args.show_interval,
+        #     out_file=filename,
+        #     bbox_color=(255, 102, 61),
+        #     text_color=(255, 102, 61))
 
         progress_bar.update()
 

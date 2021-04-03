@@ -35,9 +35,9 @@ data = dict(
         times=3,
         dataset=dict(
         type=dataset_type+'Reduce',
-        weak_ann_frac=5,
+        weak_ann_frac=10,
         # type=dataset_type+'Reduce',
-        ann_file=data_root + 'trainval.json',
+        ann_file=data_root + 'train.json',
         # ann_file=[data_root + 'VOC2007/trainval.json',
         #           data_root + 'VOC2012/train.json'
         #           ],
