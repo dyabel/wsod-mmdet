@@ -17,6 +17,7 @@ def visualize_oam_boxes(bboxes,
                         img_metas,
                         show=True,
                         out_dir=None,
+                        win_name='',
                         show_score_thr=0.3):
     img_tensor = img_tensor.unsqueeze(0)
     img = tensor2imgs(img_tensor,**img_metas[1]['img_norm_cfg'])[0]
@@ -43,7 +44,7 @@ def visualize_oam_boxes(bboxes,
         # thickness=thickness,
         # font_scale=font_scale,
         # font_size=font_size,
-        # win_name=win_name,
+        win_name=win_name,
         # fig_size=fig_size,
         show=show,
         # wait_time=wait_time,

@@ -32,6 +32,8 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                  shared_head=shared_head,
                  train_cfg=train_cfg,
                  test_cfg=test_cfg)
+        wandb.config.oam_max_num=8
+        wandb.config.score_thr=0.01
         # self.init_contrast_head(contrast_head)
 
     def init_assigner_sampler(self):
@@ -155,7 +157,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                         ):
         oam_bboxes, oam_labels = bboxes,labels
         if len(labels) == 0:
-            print('empty oam')
+            # print('empty oam')
             return 1000,[bboxes],[labels]
 
         # begin iter
@@ -175,7 +177,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             else:
                 count = 0
             oam_bboxes, oam_labels = oam_bboxes_next, oam_labels_next
-        return T,[oam_bboxes],[oam_labels]
+        return T-2,[oam_bboxes],[oam_labels]
     #duyu
     @torch.no_grad()
     def oam_forward(self,x,oam_bboxes,img_level_label,img_metas):
@@ -242,8 +244,10 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                              )
         gt_bboxes[1] = oam_bboxes[0]
         gt_labels[1] = oam_labels[0]
-        if oam_confidence==3:
-            visualize_oam_boxes(oam_bboxes[0],oam_labels[0],img[1],img_metas,show=False,out_dir='../work_dirs/oam_bboxes/',show_score_thr=0)
+        if oam_confidence==1:
+            visualize_oam_boxes(oam_bboxes[0],oam_labels[0],img[1],img_metas,
+                                win_name=str(oam_confidence),show=False,
+                                out_dir='../work_dirs/oam_bboxes1/',show_score_thr=0)
 
         # print(proposal_list[0][0],gt_bboxes[0][0])
         losses_branch2 = self.forward_train_branch2(x,
@@ -637,9 +641,9 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                                  bboxes_weak,
                                                                  bbox_results_weak_pseudo['cls_score'],
                                                                  gt_labels[1],
-                                                                 score_thr=0.1,
+                                                                 score_thr=wandb.config.score_thr,
                                                                  nms_cfg={'iou_threshold': 0.5},
-                                                                 max_num=10
+                                                                 max_num=wandb.config.oam_max_num
                                                                  )
 
         # print('oam_labels_second_pass: ',len(oam_labels_weak))

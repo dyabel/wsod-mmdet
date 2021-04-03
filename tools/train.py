@@ -206,7 +206,7 @@ def main():
         validate=(not args.no_validate),
         timestamp=timestamp,
         meta=meta)
-    wandb.save(os.path.join(wandb.config.work_dir,'mymodel.h5'))
+    # wandb.save(os.path.join(wandb.config.work_dir,'mymodel.h5'))
     # fitlog.finish()
 if __name__ == '__main__':
     main()

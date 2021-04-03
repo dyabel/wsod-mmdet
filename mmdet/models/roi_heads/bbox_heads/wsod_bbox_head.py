@@ -92,7 +92,7 @@ class ConvFCWSODHead(BBoxHead):
         self.relu = nn.ReLU(inplace=True)
         # reconstruct fc_cls and fc_reg since input channels are changed
         if self.with_cls:
-            self.fc_cls_weak_branch1 = nn.Linear(self.cls_last_dim, self.num_classes)
+            # self.fc_cls_weak_branch1 = nn.Linear(self.cls_last_dim, self.num_classes)
             self.fc_cls = nn.Linear(self.cls_last_dim, self.num_classes + 1)
             self.fc_cls_branch2 = nn.Linear(self.cls_last_dim, self.num_classes + 1)
 
@@ -109,8 +109,8 @@ class ConvFCWSODHead(BBoxHead):
         if self.with_cls:
             nn.init.normal_(self.fc_cls.weight, 0, 0.01)
             nn.init.constant_(self.fc_cls.bias, 0)
-            nn.init.normal_(self.fc_cls_weak_branch1.weight, 0, 0.01)
-            nn.init.constant_(self.fc_cls_weak_branch1.bias, 0)
+            # nn.init.normal_(self.fc_cls_weak_branch1.weight, 0, 0.01)
+            # nn.init.constant_(self.fc_cls_weak_branch1.bias, 0)
             nn.init.normal_(self.fc_cls_branch2.weight, 0, 0.01)
             nn.init.constant_(self.fc_cls_branch2.bias, 0)
         if self.with_reg:
@@ -195,10 +195,11 @@ class ConvFCWSODHead(BBoxHead):
         for fc in self.reg_fcs:
             x_reg = self.relu(fc(x_reg))
 
-        cls_score = self.fc_cls_weak_branch1(x_cls) if self.with_cls else None
+        cls_score = self.fc_cls(x_cls) if self.with_cls else None
         bbox_pred = self.fc_reg_weak_branch1(x_reg) if self.with_reg else None
-        cls_score = F.softmax(cls_score,dim=0)
+        cls_score = F.softmax(cls_score[:,:-1],dim=0)
         bbox_pred = F.softmax(bbox_pred,dim=1)
+
         # cls_proposal_mat = cls_score*bbox_pred
 
         return cls_score*bbox_pred
