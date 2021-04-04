@@ -467,6 +467,7 @@ def print_map_summary(mean_ap,
         table_data.append(['mAP', '', '', '', f'{mean_ap[i]:.3f}'])
         if mean_ap[i] > wandb.config.max_map:
             wandb.config.update({'max_map':mean_ap[i]},allow_val_change=True)
+        wandb.config.update({'map': mean_ap[i]}, allow_val_change=True)
         table = AsciiTable(table_data)
         table.inner_footing_row_border = True
         print_log('\n' + table.table, logger=logger)

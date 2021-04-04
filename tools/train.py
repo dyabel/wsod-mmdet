@@ -93,6 +93,7 @@ def main():
     wandb.config.config_file = args.config
     wandb.config.work_dir = args.work_dir
     wandb.config.max_map = 0
+    wandb.config.map = 0
     # wandb.config.update({'max_map':0},allow_val_change=True)
     # wandb.config.tag = timestamp
     # wandb.config.update(allow_val_change=True)

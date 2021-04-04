@@ -12,6 +12,7 @@ from mmdet.core import (bbox2roi, bbox_mapping, merge_aug_bboxes,
 from mmdet.core.utils import convert_label
 from mmdet.utils import visualize_oam_boxes,iou
 import wandb
+import time
 @HEADS.register_module()
 class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
     """Simplest base roi head including one bbox head and one mask head."""
@@ -32,7 +33,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                  shared_head=shared_head,
                  train_cfg=train_cfg,
                  test_cfg=test_cfg)
-        wandb.config.oam_max_num=-1
+        wandb.config.oam_max_num=100
         wandb.config.score_thr1=0.05
         wandb.config.score_thr2=0.5
         wandb.config.empty_cf = 30
@@ -124,12 +125,15 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         # print(labels1,labels2)
         matched = []
         for i,ii in enumerate(labels1):
+            flag = False
             for j in torch.where(labels2==ii)[0]:
                 if j in matched:
                     continue
                 if iou(bboxes1[i].unsqueeze(0),bboxes2[j].unsqueeze(0))[0][0]>0.5:
                     matched.append(j)
+                    flag = True
                     break
+            if not flag: return False
         if len(matched)!=len(labels2):
             return False
         return True
@@ -167,6 +171,8 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                 count = 0
             oam_bboxes, oam_labels = oam_bboxes_next, oam_labels_next
         return T,[oam_bboxes],[oam_labels]
+
+
     #duyu
     @torch.no_grad()
     def oam_forward(self,x,oam_bboxes,img_level_label,img_metas):
@@ -224,14 +230,16 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         # proposal_list
         # losses_second_pass = self.forward_train_second_pass(x,img_metas,proposal_list,gt_bboxes,gt_labels,gt_bboxes_ignore,
         # print(oam_bboxes[0][0])
-        # oam_confidence,_,_ = self.OAM_Confidence(x,
-        #                                     img_metas,
-        #                                     oam_bboxes[0],
-        #                                     oam_labels[0],
-        #                                     img_level_label,
-        #                                     max_iter=30,
-        #                                      )
-        oam_confidence = 3
+        # time_start = time.time()
+        oam_confidence,_,_ = self.OAM_Confidence(x,
+                                            img_metas,
+                                            oam_bboxes[0],
+                                            oam_labels[0],
+                                            img_level_label,
+                                            max_iter=30,
+                                             )
+        # print(time.time()-time_start)
+        # oam_confidence = 3
         gt_bboxes[1] = oam_bboxes[0]
         gt_labels[1] = oam_labels[0]
         # print(gt_labels)
@@ -637,7 +645,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                                  nms_cfg={'iou_threshold': 0.5},
                                                                  max_num=wandb.config.oam_max_num
                                                                  )
-
+        # print(len(oam_labels_weak))
         # print('oam_labels_second_pass: ',len(oam_labels_weak))
 
         oam_bboxes = []
