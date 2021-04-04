@@ -180,6 +180,7 @@ class WSOD_RPN(BaseDetector):
                                                                     **kwargs)
 
 
+
         losses.update(wsod_losses)
         return losses
 
