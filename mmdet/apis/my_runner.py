@@ -76,7 +76,8 @@ class MyRunner(EpochBasedRunner):
            self.call_hook('before_run')
 
            while self.epoch < self._max_epochs:
-               wandb.config.update({'current_epoch':self.epoch},allow_val_change=True)
+               if self.rank == 0:
+                   wandb.config.update({'current_epoch':self.epoch},allow_val_change=True)
                for i, flow in enumerate(workflow):
                    mode, epochs = flow
                    if isinstance(mode, str):  # self.train()

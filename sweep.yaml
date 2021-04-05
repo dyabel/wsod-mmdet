@@ -1,0 +1,22 @@
+program:./exec.sh
+method:bayes
+metric:
+  name:map
+  goal:minimize
+parameters:
+  oam_max_num:
+    min 8
+    max 15
+  score_thr1:
+    min:0.3
+    max:0.8
+  score_thr2:
+    min:0.5
+    max:0.9
+  empty_cf:
+    min:20
+    max:30
+  lr:
+    min:0.0001
+    max:0.02
+

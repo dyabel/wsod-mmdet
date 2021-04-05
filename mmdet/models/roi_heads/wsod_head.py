@@ -13,6 +13,7 @@ from mmdet.core.utils import convert_label
 from mmdet.utils import visualize_oam_boxes,iou
 import wandb
 import time
+
 @HEADS.register_module()
 class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
     """Simplest base roi head including one bbox head and one mask head."""
@@ -33,10 +34,10 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                  shared_head=shared_head,
                  train_cfg=train_cfg,
                  test_cfg=test_cfg)
-        wandb.config.oam_max_num=100
-        wandb.config.score_thr1=0.05
-        wandb.config.score_thr2=0.5
-        wandb.config.empty_cf = 30
+        # wandb.config.oam_max_num=10
+        # wandb.config.score_thr1=0.5
+        # wandb.config.score_thr2=0.7
+        # wandb.config.empty_cf = 30
         # self.init_contrast_head(contrast_head)
 
     def init_assigner_sampler(self):
@@ -218,6 +219,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         img_level_label = gt_labels[1]
         losses_branch1,oam_bboxes,oam_labels = self.forward_train_branch1(x,img_metas,proposal_list,gt_bboxes,gt_labels,gt_bboxes_ignore,
                                                        gt_masks=None)
+        # print(len(oam_bboxes[0]))
         # print('oam boxes num:',len(oam_bboxes[1]))
 
 
@@ -236,7 +238,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                             oam_bboxes[0],
                                             oam_labels[0],
                                             img_level_label,
-                                            max_iter=30,
+                                            max_iter=wandb.config.empty_cf,
                                              )
         # print(time.time()-time_start)
         # oam_confidence = 3
@@ -244,7 +246,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         gt_labels[1] = oam_labels[0]
         # print(gt_labels)
         # print(gt_bboxes[1][0])
-        if oam_confidence==3:
+        if oam_confidence<10:
             visualize_oam_boxes(oam_bboxes[0],oam_labels[0],img[1],img_metas,
                                 win_name=str(1/(oam_confidence-2)),show=False,
                                 out_dir='../work_dirs/oam_bboxes1/',show_score_thr=0)
@@ -786,7 +788,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         acc_weak = accuracy(bbox_results_weak_branch2['cls_score'],labels)
 
         loss_bbox_weak_branch2 = dict()
-        if oam_confidence>3:
+        if oam_confidence>wandb.config.ss_cf_thr:
             loss_bbox_weak_branch2['loss_cls_weak_branch2'] = self.bbox_head.loss_cls(bbox_results_weak_branch2['cls_score'],
                                                                                       labels,
                                                                                       label_weights,
@@ -804,7 +806,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                                                   labels,
                                                                                   label_weights,
                                                                                   avg_factor=avg_factor,
-                                                                                  reduction_override=None)/(oam_confidence-2)
+                                                                                  reduction_override=None)/(oam_confidence-2)**2
             # loss_bbox_weak_branch2 = self.bbox_head.loss_strong(bbox_results_weak_branch2['cls_score'],
             #                                                       bbox_results_weak_branch2['bbox_pred'],
             #                                                       rois_weak,

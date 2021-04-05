@@ -42,13 +42,25 @@ def bbox_select_per_class_fixnum(multi_bboxes,
     scores = multi_scores[:, :-1]
 
     labels = torch.arange(num_classes, dtype=torch.long)
-    labels = labels.view(1, -1).expand_as(scores)
 
+    labels = labels.view(1, -1).expand_as(scores)
     # print('#'*100)
     # print('img_label',img_level_label.nonzero())
     # remove low scoring boxes
+    # print(scores.size())
+    # scores,idx = torch.sort(scores,dim=0)
+    # print(scores.size(),idx.size())
+    # print(scores[idx].size())
+    # bboxes = bboxes[idx][-idx.size(0)//2::,:,:]
+    # scores = scores[idx][-idx.size(0)//2::,:]
+    # labels = labels[idx][-idx.size(0)//2::,:]
+    # print(scores.size())
+
     img_level_label = img_level_label.view(1,-1).expand_as(scores).reshape(-1)
     gt_class_inds = img_level_label > 0
+
+    # print(bboxes.size())
+    # print(gt_class_inds.size())
     bboxes = bboxes.reshape(-1, 4)
     scores = scores.reshape(-1)
     labels = labels.reshape(-1)
@@ -56,7 +68,6 @@ def bbox_select_per_class_fixnum(multi_bboxes,
     valid_mask = scores > score_thr
     inds = valid_mask.nonzero(as_tuple=False).squeeze(1)
     bboxes, scores, labels = bboxes[inds], scores[inds], labels[inds]
-    _,idx = torch.sort(scores)
     # print(bboxes.size(),scores.size(),labels)
     # if inds.numel() == 0:
     #     if torch.onnx.is_in_onnx_export():
@@ -65,14 +76,15 @@ def bbox_select_per_class_fixnum(multi_bboxes,
     #     return bboxes, labels
 
     # TODO: add size check before feed into batched_nms
-    # dets, keep = batched_nms(bboxes, scores, labels, nms_cfg)
+    dets, keep = batched_nms(bboxes, scores, labels, nms_cfg)
     # print(labels,gt_class_inds)
+    max_num = fix_num
+    if max_num > 0:
+        dets = dets[:max_num]
+        keep = keep[:max_num]
 
-    # if max_num > 0:
-    #     dets = dets[:max_num]
-    #     keep = keep[:max_num]
-
-    return bboxes[idx[-fix_num::]],labels[idx[-fix_num::]]
+    # return bboxes[idx[-fix_num::]],labels[idx[-fix_num::]]
+    return dets, labels[keep]
 
 @torch.no_grad()
 def bbox_select_per_class(multi_bboxes,

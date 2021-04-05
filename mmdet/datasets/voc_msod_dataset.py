@@ -76,6 +76,9 @@ class VocMsodDataset(CustomDataset):
                 self.id_labelattr[i] = -1
             for i in self.coco.catToImgs.keys():
                 self.coco.catToImgs[i] = list(set(self.coco.catToImgs[i]))
+                if len(self.coco.catToImgs[i])<10:
+                    print('catimgs fewer than 10')
+                    raise Exception
                 cat_strong_image_ids =self.coco.catToImgs[i][0:(len(self.coco.catToImgs[i])//weak_ann_frac+len(self.coco.catToImgs[i])%weak_ann_frac)]
                 self.cat_weak_ids[i] = []
                 self.cat_strong_ids[i] = []
@@ -100,6 +103,9 @@ class VocMsodDataset(CustomDataset):
                 cnt += num_strong
                 if num_strong == 0:
                     continue
+                if len(self.cat_weak_ids[i]) == 0:
+                    print('error')
+                    raise Exception
                 for j in range(len(self.cat_weak_ids[i])):
                     indices.append([self.id_idx[self.cat_strong_ids[i][j % num_strong]],
                                     self.id_idx[self.cat_weak_ids[i][j]]])

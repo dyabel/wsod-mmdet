@@ -16,7 +16,7 @@ from mmdet.apis import set_random_seed, train_detector
 from mmdet.datasets import build_dataset
 from mmdet.models import build_detector
 from mmdet.utils import collect_env, get_root_logger
-import wandb
+import wandb.sdk.internal.datastore
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a detector')
@@ -89,11 +89,25 @@ def main():
     os.environ["WANDB_RUN_GROUP"] = "experiment-" + wandb.util.generate_id()
     args = parse_args()
     wandb.init(project=args.name)
-    # wandb.init(project="wsod-mmdet",group='DDP')
+    # hyperparameter_defaults = dict(
+    #     oam_max_num=10,
+    #     score_thr1=0.3,
+    #     score_thr2=0.7,
+    #     empty_cf=30,
+    #     lr=0.001,
+    # )
+    wandb.config.oam_max_num=10
+    wandb.config.score_thr1=0.2
+    wandb.config.score_thr2=0.7
+    wandb.config.empty_cf=30
+    wandb.config.ss_cf_thr=3
+    wandb.config.lr=0.001
+    # wandb.init(config=hyperparameter_defaults)
     wandb.config.config_file = args.config
     wandb.config.work_dir = args.work_dir
     wandb.config.max_map = 0
     wandb.config.map = 0
+
     # wandb.config.update({'max_map':0},allow_val_change=True)
     # wandb.config.tag = timestamp
     # wandb.config.update(allow_val_change=True)
