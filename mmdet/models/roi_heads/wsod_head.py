@@ -235,7 +235,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         # time_start = time.time()
         oam_confidence,_,_ = self.OAM_Confidence(x,
                                             img_metas,
-                                            oam_bboxes[0],
+                                            oam_bboxes[0][:,:4],
                                             oam_labels[0],
                                             img_level_label,
                                             max_iter=wandb.config.empty_cf,
@@ -244,10 +244,11 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         # oam_confidence = 3
         gt_bboxes[1] = oam_bboxes[0]
         gt_labels[1] = oam_labels[0]
+        # print(img_level_label.nonzero())
         # print(gt_labels)
         # print(gt_bboxes[1][0])
-        if oam_confidence<10:
-            visualize_oam_boxes(oam_bboxes[0],oam_labels[0],img[1],img_metas,
+        if oam_confidence<wandb.config.ss_cf_thr:
+            visualize_oam_boxes(oam_bboxes[0][:,:4],oam_labels[0],img[1],img_metas,
                                 win_name=str(1/(oam_confidence-2)),show=False,
                                 out_dir='../work_dirs/oam_bboxes1/',show_score_thr=0)
 
@@ -350,7 +351,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             assign_result = self.bbox_assigner.assign(
                 proposal_list[0], gt_bboxes[0], gt_bboxes_ignore[0],
                 gt_labels[0])
-            sampling_result = self.second_pass_sampler.sample(
+            sampling_result = self.bbox_sampler.sample(
                 assign_result,
                 proposal_list[0],
                 gt_bboxes[0],
@@ -362,7 +363,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             assign_result = self.bbox_assigner.assign(
                 proposal_list[1], gt_bboxes[1], gt_bboxes_ignore[1],
                 gt_labels=None)
-            sampling_result = self.second_pass_sampler.sample(
+            sampling_result = self.bbox_sampler.sample(
                 assign_result,
                 proposal_list[1],
                 gt_bboxes[1],
@@ -401,6 +402,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                               gt_bboxes_ignore=None,
                               gt_masks=None):
         if self.with_bbox or self.with_mask:
+
             num_imgs = len(img_metas)
 
             if gt_bboxes_ignore is None:
@@ -421,17 +423,17 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
 
             #assign for weak image
             assign_result = self.bbox_assigner.assign(
-                proposal_list[1], gt_bboxes[1], gt_bboxes_ignore[1],
-                gt_labels=None)
+                proposal_list[1], gt_bboxes[1][:,:4], gt_bboxes_ignore[1],
+                gt_labels=gt_labels[1])
             sampling_result = self.bbox_sampler.sample(
                 assign_result,
                 proposal_list[1],
-                gt_bboxes[1],
-                gt_labels=None,
+                gt_bboxes[1][:,:4],
+                gt_labels=gt_labels[1],
                 feats=[lvl_feat[1][None] for lvl_feat in x])
 
             sampling_results.append(sampling_result)
-
+        # print(gt_labels[1])
         losses = dict()
         # bbox head forward and loss
         if self.with_bbox:
@@ -653,7 +655,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         oam_bboxes = []
         oam_labels = []
         # oam_bboxes.append(oam_bboxes_strong[:, :4])
-        oam_bboxes.append(oam_bboxes_weak[:, :4])
+        oam_bboxes.append(oam_bboxes_weak)
         # oam_labels.append(oam_labels_strong.to(torch_device))
         oam_labels.append(oam_labels_weak.to(torch_device))
         return bbox_results_strong, bbox_results_weak, oam_bboxes, oam_labels
@@ -667,6 +669,18 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                          img_metas,
                          gt_bboxes_ignore=None,
                                ):
+        """
+        Args:
+        :param x:
+        :param strong_bboxes:
+        :param strong_labels:
+        :param oam_bboxes:
+        :param oam_labels:
+        :param img_metas:
+        :param gt_bboxes_ignore:
+        :param gggg: 222
+        :return:
+        """
         torch_device = strong_labels.get_device()
         oam_labels = oam_labels.to(torch_device)
         if self.with_bbox or self.with_mask:
@@ -778,7 +792,12 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
 
         # bbox_targets_weak_branch2 = self.bbox_head.get_targets([sampling_results[1]],oam_bboxes_weak,oam_labels_weak,self.train_cfg)
         bbox_targets_weak_branch2 = self.bbox_head.get_targets([sampling_results[1]],[gt_bboxes[1]],[gt_labels[1]],self.train_cfg)
+
         labels,label_weights,bbox_targets,bbox_weights = bbox_targets_weak_branch2
+        label_weights = label_weights.new_ones(label_weights.size(0))
+        # for i in label_weights:
+        #     label_weights[i] = gt_bboxes[i][4]
+        # print(labels.unique())
         # print(labels,gt_labels[1])
         # print(gt_bboxes[1])
         # print(bbox_targets)
@@ -806,7 +825,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                                                   labels,
                                                                                   label_weights,
                                                                                   avg_factor=avg_factor,
-                                                                                  reduction_override=None)/(oam_confidence-2)**2
+                                                                                  reduction_override=None)/(oam_confidence-2)
             # loss_bbox_weak_branch2 = self.bbox_head.loss_strong(bbox_results_weak_branch2['cls_score'],
             #                                                       bbox_results_weak_branch2['bbox_pred'],
             #                                                       rois_weak,

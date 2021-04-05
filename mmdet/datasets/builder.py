@@ -113,8 +113,8 @@ def build_dataloader(dataset,
             # sampler = DistributedGroupSampler(dataset, samples_per_gpu,
             #                                             world_size, rank)
         else:
-            sampler = WsodDistributedSampler(
-            # sampler = DistributedSampler(
+            # sampler = WsodDistributedSampler(
+            sampler = DistributedSampler(
             dataset, world_size, rank, shuffle=False)
         batch_size = samples_per_gpu
         num_workers = workers_per_gpu

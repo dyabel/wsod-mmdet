@@ -30,7 +30,7 @@ def bbox_select_per_class_fixnum(multi_bboxes,
 
     # print('22222222222:',len(multi_bboxes),multi_scores.size())
     num_classes = multi_scores.size(1) - 1
-    multi_scores = torch.sigmoid(multi_scores)
+    # multi_scores = torch.sigmoid(multi_scores)
     # exclude background category
     # print(multi_bboxes.shape)
     if multi_bboxes.shape[1] > 4:

@@ -76,6 +76,7 @@ class VocMsodDataset(CustomDataset):
                 self.id_labelattr[i] = -1
             for i in self.coco.catToImgs.keys():
                 self.coco.catToImgs[i] = list(set(self.coco.catToImgs[i]))
+                # print(i,len(self.coco.catToImgs[i]))
                 if len(self.coco.catToImgs[i])<10:
                     print('catimgs fewer than 10')
                     raise Exception

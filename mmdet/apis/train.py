@@ -90,6 +90,7 @@ def train_detector(model,
             model.cuda(cfg.gpu_ids[0]), device_ids=cfg.gpu_ids)
 
     # build runner
+    cfg.optimizer['lr'] = wandb.config.lr
     optimizer = build_optimizer(model, cfg.optimizer)
     runner = MyRunner(
         model,
@@ -115,7 +116,6 @@ def train_detector(model,
     runner.register_training_hooks(cfg.lr_config, optimizer_config,
                                    cfg.checkpoint_config, cfg.log_config,
                                    cfg.get('momentum_config', None))
-    wandb.config.lr = cfg.optimizer['lr']
     wandb.config.lr_config = cfg.lr_config['step']
     wandb.config.total_epochs = cfg.total_epochs
     if distributed:
