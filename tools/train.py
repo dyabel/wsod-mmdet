@@ -96,12 +96,12 @@ def main():
     #     empty_cf=30,
     #     lr=0.001,
     # )
-    wandb.config.oam_max_num=10
-    wandb.config.score_thr1=0.2
-    wandb.config.score_thr2=0.7
-    wandb.config.empty_cf=30
-    wandb.config.ss_cf_thr=10
-    wandb.config.lr=0.005
+    wandb.config.oam_max_num=8
+    wandb.config.score_thr1=0.1886
+    wandb.config.score_thr2=0.4954
+    wandb.config.empty_cf=25
+    wandb.config.ss_cf_thr=8
+    wandb.config.lr=0.01
     # wandb.init(config=hyperparameter_defaults)
     wandb.config.config_file = args.config
     wandb.config.work_dir = args.work_dir

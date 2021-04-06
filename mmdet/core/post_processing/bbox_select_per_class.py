@@ -31,17 +31,21 @@ def bbox_select_per_class_fixnum(multi_bboxes,
     # print('22222222222:',len(multi_bboxes),multi_scores.size())
     num_classes = multi_scores.size(1) - 1
     # multi_scores = torch.sigmoid(multi_scores)
+    scores = multi_scores[:, :-1]
+    gt_class_ids = (img_level_label>0).expand(scores.size(0),-1)
+    scores = scores[gt_class_ids]
+    scores = torch.softmax(scores,dim=1)
     # exclude background category
     # print(multi_bboxes.shape)
     if multi_bboxes.shape[1] > 4:
         bboxes = multi_bboxes.view(multi_scores.size(0), -1, 4)
     else:
         bboxes = multi_bboxes[:, None].expand(
-            multi_scores.size(0), num_classes, 4)
+            multi_scores.size(0), torch.sum(img_level_label), 4)
 
-    scores = multi_scores[:, :-1]
 
     labels = torch.arange(num_classes, dtype=torch.long)
+    labels = labels[img_level_label>0]
 
     labels = labels.view(1, -1).expand_as(scores)
     # print('#'*100)
@@ -57,14 +61,12 @@ def bbox_select_per_class_fixnum(multi_bboxes,
     # print(scores.size())
 
     img_level_label = img_level_label.view(1,-1).expand_as(scores).reshape(-1)
-    gt_class_inds = img_level_label > 0
 
     # print(bboxes.size())
     # print(gt_class_inds.size())
     bboxes = bboxes.reshape(-1, 4)
     scores = scores.reshape(-1)
     labels = labels.reshape(-1)
-    bboxes, scores, labels = bboxes[gt_class_inds], scores[gt_class_inds], labels[gt_class_inds]
     valid_mask = scores > score_thr
     inds = valid_mask.nonzero(as_tuple=False).squeeze(1)
     bboxes, scores, labels = bboxes[inds], scores[inds], labels[inds]

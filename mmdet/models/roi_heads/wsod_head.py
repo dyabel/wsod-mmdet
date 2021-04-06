@@ -247,10 +247,10 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         # print(img_level_label.nonzero())
         # print(gt_labels)
         # print(gt_bboxes[1][0])
-        if oam_confidence<wandb.config.ss_cf_thr:
-            visualize_oam_boxes(oam_bboxes[0][:,:4],oam_labels[0],img[1],img_metas,
-                                win_name=str(1/(oam_confidence-2)),show=False,
-                                out_dir='../work_dirs/oam_bboxes1/',show_score_thr=0)
+        # if oam_confidence<wandb.config.ss_cf_thr:
+        #     visualize_oam_boxes(oam_bboxes[0][:,:4],oam_labels[0],img[1],img_metas,
+        #                         win_name=str(1/(oam_confidence-2)),show=False,
+        #                         out_dir='../work_dirs/oam_bboxes1/',show_score_thr=0)
 
         # print(proposal_list[0][0],gt_bboxes[0][0])
         losses_branch2 = self.forward_train_branch2(x,
@@ -533,13 +533,13 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                 rescale=False,
                 cfg=None)
         assert len(bboxes_strong)==bbox_results_strong['cls_score'].size(0)
-        oam_bboxes_strong,oam_labels_strong = bbox_select_per_class_fixnum(
+        oam_bboxes_strong,oam_labels_strong = bbox_select_per_class(
                                                                     bboxes_strong,
                                                                     bbox_results_strong['cls_score'],
                                                                     img_level_label_for_strong,
                                                                     score_thr=wandb.config.score_thr1,
                                                                     nms_cfg={'iou_threshold':0.5},
-                                                                    fix_num=bbox_results_strong['cls_score'].size(0)//2
+                                                                    max_num=bbox_results_strong['cls_score'].size(0)//2
                                                                     )
 
         # print('oam_labels num for strong first pass:',len(oam_labels_strong))
@@ -567,12 +567,12 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             cfg=None)
         # print(bboxes_weak[0])
         assert len(bboxes_weak)==bbox_results_weak_pseudo['cls_score'].size(0)
-        oam_bboxes_weak,oam_labels_weak = bbox_select_per_class_fixnum(bboxes_weak,
+        oam_bboxes_weak,oam_labels_weak = bbox_select_per_class(bboxes_weak,
                                                                     bbox_results_weak_pseudo['cls_score'],
                                                                     gt_labels[1],
                                                                     score_thr=wandb.config.score_thr1,
                                                                     nms_cfg={'iou_threshold':0.5},
-                                                                    fix_num=bbox_results_weak_pseudo['cls_score'].size(0)//2
+                                                                    max_num=bbox_results_weak_pseudo['cls_score'].size(0)//2
                                                                     )
         # print(oam_bboxes_weak[0])
 
