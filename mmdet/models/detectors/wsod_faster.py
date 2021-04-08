@@ -5,6 +5,7 @@ import torch.nn as nn
 from ..builder import DETECTORS, build_backbone, build_head, build_neck
 from .base import BaseDetector
 from mmdet.core import convert_label
+import wandb
 
 
 @DETECTORS.register_module()
@@ -174,14 +175,29 @@ class WSOD_RPN(BaseDetector):
         else:
             proposal_list = proposals
         gt_bboxes[1] = proposal_list[1]
-        wsod_losses = self.wsod_head.forward_train(x,img, img_metas, proposal_list,
+        wsod_losses,oam_bboxes,oam_labels,oam_confidence = self.wsod_head.forward_train(x,img, img_metas, proposal_list,
                                                                     gt_bboxes, gt_labels,
                                                                     gt_bboxes_ignore, gt_masks,
                                                                     **kwargs)
-
-
-
         losses.update(wsod_losses)
+        # gt_bboxes[1] = oam_bboxes[:,:4]
+        # gt_labels[1] = oam_labels
+        #
+        rpn_losses_oam, proposal_list = self.rpn_head.forward_train_oam(
+            x,
+            img_metas,
+            gt_bboxes,
+            gt_labels=None,
+            gt_bboxes_ignore=gt_bboxes_ignore,
+            proposal_cfg=proposal_cfg)
+        rpn_losses = dict()
+        rpn_losses['loss_rpn_bbox_oam'] = rpn_losses_oam['loss_rpn_bbox']
+        if oam_confidence > wandb.config.ss_cf_thr:
+            rpn_losses['loss_rpn_cls_oam'] = rpn_losses_oam['loss_rpn_cls'] * 0
+        else:
+            rpn_losses['loss_rpn_cls_oam'] = rpn_losses_oam['loss_rpn_cls']
+        losses.update(rpn_losses)
+
         return losses
 
     async def async_simple_test(self,

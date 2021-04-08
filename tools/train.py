@@ -96,12 +96,14 @@ def main():
     #     empty_cf=30,
     #     lr=0.001,
     # )
-    wandb.config.oam_max_num=8
-    wandb.config.score_thr1=0.1886
-    wandb.config.score_thr2=0.4954
-    wandb.config.empty_cf=25
-    wandb.config.ss_cf_thr=8
-    wandb.config.lr=0.01
+    wandb.config.oam_max_num = 15
+    # wandb.config.score_thr1 = 0.2
+    wandb.config.score_thr2 = 0.3
+    wandb.config.empty_cf = 30
+    wandb.config.ss_cf_thr = 12
+    wandb.config.lr = 0.004
+    wandb.config.warm_iter = 3500
+    wandb.config.strong_shot = 25
     # wandb.init(config=hyperparameter_defaults)
     wandb.config.config_file = args.config
     wandb.config.work_dir = args.work_dir
@@ -198,11 +200,9 @@ def main():
         wandb.config.train_data_type = cfg.data.train['type']
         wandb.config.repeat_times = 1
         wandb.config.ann_file = cfg.data.train['ann_file']
-
     datasets = [build_dataset(cfg.data.train)]
 
     if len(cfg.workflow) == 2:
-        print('work flow has val')
         val_dataset = copy.deepcopy(cfg.data.val)
         val_dataset.pipeline = cfg.data.train.pipeline
         datasets.append(build_dataset(val_dataset))

@@ -4,11 +4,11 @@
 # @Email   : abelazady@foxmail.com
 # @File    : selective_search.py
 # @Software: PyCharm
-import cv2
-import selectivesearch
-import matplotlib.pyplot as plt
-import pprint
-import matplotlib.patches as mpatches
+# import cv2
+# import selectivesearch
+# import matplotlib.pyplot as plt
+# import pprint
+# import matplotlib.patches as mpatches
 import skimage.io
 import selective_search
 
@@ -35,7 +35,7 @@ import selective_search
 proposals_list = []
 import mmcv
 cnt = 0
-with open('../data/VOCdevkit/train.txt','r') as f:
+with open('../../data/VOCdevkit/VOC2007/ImageSets/Main/trainval.txt','r') as f:
     for line in f.readlines():
         cnt += 1
         if cnt%10 == 0:
@@ -45,8 +45,8 @@ with open('../data/VOCdevkit/train.txt','r') as f:
         # img = cv2.imread('../data/VOCdevkit/JPEGImages/'+img_name)
         # img_lbl, boxes = selectivesearch.selective_search(
         #     img,scale=500,sigma=0.9, min_size=20)
-        image = skimage.io.imread('../data/VOCdevkit/JPEGImages/'+img_name)
-        boxes = selective_search.selective_search(image,mode='fast', random_sort=False)
+        image = skimage.io.imread('../../data/VOCdevkit/VOC2007/JPEGImages/'+img_name)
+        boxes = selective_search.selective_search(image,mode='quality', random_sort=False)
         proposals = []
         # print(len(boxes))
         boxes_filter = selective_search.box_filter(boxes, min_size=20, topN=1000)
@@ -55,7 +55,7 @@ with open('../data/VOCdevkit/train.txt','r') as f:
             proposal.append(1)
             proposals.append(proposal)
         proposals_list.append(proposals)
-mmcv.dump(proposals_list,'../ss_train.pkl')
+mmcv.dump(proposals_list,'../../ss_train.pkl')
 
 
 

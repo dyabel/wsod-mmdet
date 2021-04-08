@@ -22,12 +22,13 @@ class SamplingResult(util_mixins.NiceRepr):
         })>
     """
 
-    def __init__(self, pos_inds, neg_inds, bboxes, gt_bboxes,gt_weights, assign_result,
+    def __init__(self, pos_inds, neg_inds, bboxes, box_weight,gt_bboxes,gt_weights, assign_result,
                  gt_flags):
         self.pos_inds = pos_inds
         self.neg_inds = neg_inds
         self.pos_bboxes = bboxes[pos_inds]
-        self.neg_bboxes = bboxes[neg_inds]
+        self.pos_bboxes_weight = box_weight[pos_inds]
+        self.neg_bboxes_weight = box_weight[neg_inds]
         self.pos_is_gt = gt_flags[pos_inds]
 
         self.num_gts = gt_bboxes.shape[0]

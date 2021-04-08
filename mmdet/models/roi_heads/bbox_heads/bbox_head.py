@@ -82,7 +82,7 @@ class BBoxHead(nn.Module):
         bbox_pred = self.fc_reg(x) if self.with_reg else None
         return cls_score, bbox_pred
 
-    def _get_target_single(self, pos_bboxes, neg_bboxes, pos_gt_bboxes,
+    def _get_target_single(self, pos_bboxes, neg_bboxes, pos_gt_bboxes,pos_gt_weights,
                            pos_gt_labels, cfg):
         """Calculate the ground truth for proposals in the single image
         according to the sampling results.
@@ -130,8 +130,10 @@ class BBoxHead(nn.Module):
         bbox_weights = pos_bboxes.new_zeros(num_samples, 4)
         if num_pos > 0 and pos_gt_labels is not None:
             labels[:num_pos] = pos_gt_labels
-            pos_weight = 1.0 if cfg.pos_weight <= 0 else cfg.pos_weight
-            label_weights[:num_pos] = pos_weight
+            # pos_weight = 1.0 if cfg.pos_weight <= 0 else cfg.pos_weight
+            # label_weights[:num_pos] = pos_weight
+            for i in range(num_pos):
+                label_weights[i] = pos_gt_weights[i]
             if not self.reg_decoded_bbox:
                 pos_bbox_targets = self.bbox_coder.encode(
                     pos_bboxes, pos_gt_bboxes)
@@ -199,12 +201,15 @@ class BBoxHead(nn.Module):
         pos_bboxes_list = [res.pos_bboxes for res in sampling_results]
         neg_bboxes_list = [res.neg_bboxes for res in sampling_results]
         pos_gt_bboxes_list = [res.pos_gt_bboxes for res in sampling_results]
+        pos_gt_weights_list = [res.pos_gt_weights for res in sampling_results]
+        # pos_bbox_weight_list = [res.pos_bboxes_weight for res in sampling_results]
         pos_gt_labels_list = [res.pos_gt_labels for res in sampling_results]
         labels, label_weights, bbox_targets, bbox_weights = multi_apply(
             self._get_target_single,
             pos_bboxes_list,
             neg_bboxes_list,
             pos_gt_bboxes_list,
+            pos_gt_weights_list,
             pos_gt_labels_list,
             cfg=rcnn_train_cfg)
 

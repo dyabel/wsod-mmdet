@@ -3,8 +3,8 @@ import threading
 from multiprocessing.dummy import Pool as ThreadPool
 
 cmd = ['echo hello!']
-username = "-"
-passwd = "-"
+username = "dy20"
+passwd = "dy20"
 success_IP = []
 
 def ssh(ip):

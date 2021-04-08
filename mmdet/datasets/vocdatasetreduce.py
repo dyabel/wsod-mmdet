@@ -74,64 +74,75 @@ class VocDatasetReduce(CustomDataset):
             self.num_classes = len(self.CLASSES)
             for i in self.img_ids:
                 self.id_labelattr[i] = -1
+            self.coco.catToImgs = {k: v for k, v in sorted(self.coco.catToImgs.items(), key=lambda item: len(item[1]))}
             for i in self.coco.catToImgs.keys():
                 self.coco.catToImgs[i] = list(set(self.coco.catToImgs[i]))
-                cat_strong_image_ids =self.coco.catToImgs[i][0:(len(self.coco.catToImgs[i])//weak_ann_frac+len(self.coco.catToImgs[i])%weak_ann_frac)]
+                # print(i,len(self.coco.catToImgs[i]))
+                if len(self.coco.catToImgs[i]) < 10:
+                    print('catimgs fewer than 10')
+                    raise Exception
+                # cat_strong_image_ids =self.coco.catToImgs[i][0:(len(self.coco.catToImgs[i])//weak_ann_frac+len(self.coco.catToImgs[i])%weak_ann_frac)]
+                cat_strong_image_ids = self.coco.catToImgs[i][0:wandb.config.strong_shot * 2]
                 self.cat_weak_ids[i] = []
                 self.cat_strong_ids[i] = []
+                strong_shot = 0
                 for j in self.coco.catToImgs[i]:
                     if j not in self.img_ids:
                         continue
                     if self.id_labelattr[j] != -1:
                         continue
-                    if j in cat_strong_image_ids:
+                    if j in cat_strong_image_ids and strong_shot <= wandb.config.strong_shot:
+                        strong_shot += 1
                         self.cat_strong_ids[i].append(j)
                         self.id_labelattr[j] = True
                     else:
                         self.cat_weak_ids[i].append(j)
                         self.id_labelattr[j] = False
-            assert len(self.id_labelattr)==len(self.img_ids)
-            print('img_num:',len(self.img_ids))
-            print('allocating completed')
+            assert len(self.id_labelattr) == len(self.img_ids)
+            # print('img_num:',len(self.img_ids))
+            # print('allocating completed')
             indices = []
-            cnt = 0
             ind = []
+            cnt = 0
             for i in self.cat_strong_ids.keys():
+                random.shuffle(self.cat_strong_ids[i])
                 num_strong = len(self.cat_strong_ids[i])
-                for k in self.cat_strong_ids[i]:
-                    ind.append(self.id_idx[k])
                 cnt += num_strong
                 if num_strong == 0:
-                    continue
+                    print('error')
+                    raise Exception
+                if len(self.cat_weak_ids[i]) == 0:
+                    print('error')
+                    raise Exception
+                random.shuffle(self.cat_weak_ids[i])
                 for j in range(len(self.cat_weak_ids[i])):
                     indices.append([self.id_idx[self.cat_strong_ids[i][j % num_strong]],
                                     self.id_idx[self.cat_weak_ids[i][j]]])
-
+                    ind.append(self.id_idx[self.cat_strong_ids[i][j % num_strong]])
             indices = np.concatenate(indices)
             indices = indices.astype(np.int64).tolist()
             additional_cnt = 0
             for i in range(len(self.img_ids)):
                 if i not in indices:
                     additional_cnt += 1
-                    if additional_cnt&1:
-                        ind.append(i)
+                    if additional_cnt & 1:
                         self.id_labelattr[self.img_ids[i]] = True
+                        ind.append(i)
                         cnt += 1
                     else:
                         self.id_labelattr[self.img_ids[i]] = False
 
                     indices.append(i)
-            if additional_cnt&1:
+                    print('append', i)
+            if additional_cnt & 1:
                 indices = indices[0:-1]
             strong_cnt = 0
-            ind = list(set(ind))
-            for k,v in self.id_labelattr.items():
+            for k, v in self.id_labelattr.items():
                 strong_cnt += v
-            assert strong_cnt==cnt,(strong_cnt,cnt)
+            assert strong_cnt == cnt, (strong_cnt, cnt)
             wandb.config.indices_num = len(indices)
             wandb.config.images_num = len(self.img_ids)
-            wandb.config.strong_label_percentage = len(ind)/len(self.img_ids)
-
+            wandb.config.strong_label_percentage = cnt / len(self.img_ids)
             random_indices = torch.tensor(ind)
             self.data_infos = [self.data_infos[i] for i in valid_inds]
             self.data_infos = [self.data_infos[i] for i in random_indices]
@@ -140,11 +151,8 @@ class VocDatasetReduce(CustomDataset):
                 self.proposals = [self.proposals[i] for i in random_indices]
             self.img_ids = [self.img_ids[i] for i in random_indices]
             # assert len(self.indices) == len(self.img_ids)
-            for i,j in enumerate(self.img_ids):
+            for i, j in enumerate(self.img_ids):
                 assert j == self.data_infos[i]['id']
-            # print_log('number of img_ids')
-            # print_log(len(self.img_ids))
-
             # set group flag for the sampler
             self._set_group_flag()
             # print(len(self),len(self.data_infos))

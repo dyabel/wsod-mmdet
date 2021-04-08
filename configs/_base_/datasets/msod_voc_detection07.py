@@ -11,7 +11,7 @@ train_pipeline = [
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size_divisor=32),
     dict(type='DefaultFormatBundle'),
-    dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels']),
+    dict(type='Collect', keys=['img', 'gt_bboxes', 'gt_labels','proposals']),
 ]
 test_pipeline = [
     dict(type='LoadImageFromFile'),
@@ -25,7 +25,7 @@ test_pipeline = [
             dict(type='Normalize', **img_norm_cfg),
             dict(type='Pad', size_divisor=32),
             dict(type='ImageToTensor', keys=['img']),
-            dict(type='Collect', keys=['img']),
+            dict(type='Collect', keys=['img','proposals']),
         ])
 ]
 data = dict(
@@ -38,16 +38,22 @@ data = dict(
         type=dataset_type,
         ann_file=data_root + 'VOC2007/trainval.json',
         img_prefix=data_root + 'VOC2007/JPEGImages',
+        # proposal_file=data_root + 'proposals/ss_trainval_2007.pkl',
+        proposal_file=data_root + 'proposals/rpn_r101_fpn_voc_trainval2007.pkl',
         weak_ann_frac=10,
         pipeline=train_pipeline)),
     val=dict(
         type='VocMsodDatasetVal',
         ann_file=data_root + 'VOC2007/test.json',
         img_prefix=data_root + 'VOC2007/JPEGImages',
+        proposal_file=data_root + 'proposals/rpn_r101_fpn_voc_test2007.pkl',
+        # proposal_file=data_root + 'proposals/ss_test_2007.pkl',
         pipeline=test_pipeline),
     test=dict(
         type='VocMsodDatasetVal',
         ann_file=data_root + 'VOC2007/test.json',
         img_prefix=data_root + 'VOC2007/JPEGImages',
+        # proposal_file=data_root + 'proposals/ss_test_2007.pkl',
+        proposal_file=data_root + 'proposals/rpn_r101_fpn_voc_test2007.pkl',
         pipeline=test_pipeline))
 evaluation = dict(interval=1, metric='mAP')

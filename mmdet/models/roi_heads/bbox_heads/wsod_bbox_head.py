@@ -106,20 +106,25 @@ class ConvFCWSODHead(BBoxHead):
 
     def init_weights(self):
         # conv layers are already initialized by ConvModule
-        if self.with_cls:
-            nn.init.normal_(self.fc_cls.weight, 0, 0.01)
-            nn.init.constant_(self.fc_cls.bias, 0)
-            # nn.init.normal_(self.fc_cls_weak_branch1.weight, 0, 0.01)
-            # nn.init.constant_(self.fc_cls_weak_branch1.bias, 0)
-            nn.init.normal_(self.fc_cls_branch2.weight, 0, 0.01)
-            nn.init.constant_(self.fc_cls_branch2.bias, 0)
-        if self.with_reg:
-            nn.init.normal_(self.fc_reg.weight, 0, 0.001)
-            nn.init.constant_(self.fc_reg.bias, 0)
-            nn.init.normal_(self.fc_reg_weak_branch1.weight, 0, 0.001)
-            nn.init.constant_(self.fc_reg_weak_branch1.bias, 0)
-            nn.init.normal_(self.fc_reg_branch2.weight, 0, 0.001)
-            nn.init.constant_(self.fc_reg_branch2.bias, 0)
+        # if self.with_cls:
+        #     nn.init.normal_(self.fc_cls.weight, 0, 0.01)
+        #     nn.init.constant_(self.fc_cls.bias, 0)
+        #     # nn.init.normal_(self.fc_cls_weak_branch1.weight, 0, 0.01)
+        #     # nn.init.constant_(self.fc_cls_weak_branch1.bias, 0)
+        #     nn.init.normal_(self.fc_cls_branch2.weight, 0, 0.01)
+        #     nn.init.constant_(self.fc_cls_branch2.bias, 0)
+        # if self.with_reg:
+        #     nn.init.normal_(self.fc_reg.weight, 0, 0.001)
+        #     nn.init.constant_(self.fc_reg.bias, 0)
+        #     nn.init.normal_(self.fc_reg_weak_branch1.weight, 0, 0.001)
+        #     nn.init.constant_(self.fc_reg_weak_branch1.bias, 0)
+        #     nn.init.normal_(self.fc_reg_branch2.weight, 0, 0.001)
+        #     nn.init.constant_(self.fc_reg_branch2.bias, 0)
+        for module_list in [self.shared_fcs, self.cls_fcs, self.reg_fcs]:
+            for m in module_list.modules():
+                if isinstance(m, nn.Linear):
+                    nn.init.xavier_uniform_(m.weight)
+                    nn.init.constant_(m.bias, 0)
 
     def _add_conv_fc_branch(self,
                             num_branch_convs,
@@ -163,14 +168,6 @@ class ConvFCWSODHead(BBoxHead):
             last_layer_dim = self.fc_out_channels
         return branch_convs, branch_fcs, last_layer_dim
 
-    def init_weights(self):
-        super(ConvFCWSODHead, self).init_weights()
-        # conv layers are already initialized by ConvModule
-        for module_list in [self.shared_fcs, self.cls_fcs, self.reg_fcs]:
-            for m in module_list.modules():
-                if isinstance(m, nn.Linear):
-                    nn.init.xavier_uniform_(m.weight)
-                    nn.init.constant_(m.bias, 0)
     #duyu
     def forward_weak(self, x):
         # separate branches
@@ -197,11 +194,9 @@ class ConvFCWSODHead(BBoxHead):
 
         cls_score = self.fc_cls(x_cls) if self.with_cls else None
         bbox_pred = self.fc_reg_weak_branch1(x_reg) if self.with_reg else None
-        cls_score = F.softmax(cls_score[:,:-1],dim=0)
-        bbox_pred = F.softmax(bbox_pred,dim=1)
-
+        cls_score = F.softmax(cls_score[:,:-1],dim=1)
+        bbox_pred = F.softmax(bbox_pred,dim=0)
         # cls_proposal_mat = cls_score*bbox_pred
-
         return cls_score*bbox_pred
     #duyu
     def forward_strong_branch1(self, x):

@@ -18,6 +18,7 @@ from .custom import CustomDataset
 import random
 import torch
 import wandb
+import time
 
 try:
     import pycocotools
@@ -52,9 +53,11 @@ class VocMsodDataset(CustomDataset):
         super(VocMsodDataset,self).__init__(ann_file,pipeline,classes=classes,data_root=data_root,
                                          img_prefix=img_prefix,seg_prefix=seg_prefix,proposal_file=proposal_file,
                                          test_mode=test_mode,filter_empty_gt=filter_empty_gt)
+        print('proposal_file:',proposal_file)
         # filter images too small and containing no annotations
         print('classes',classes)
         print('weak_ann_frac%d'%weak_ann_frac)
+        random.seed(time.time())
         if 'VOC2007' in self.img_prefix:
             self.year = 2007
         elif 'VOC2012' in self.img_prefix:
@@ -74,39 +77,46 @@ class VocMsodDataset(CustomDataset):
             self.num_classes = len(self.CLASSES)
             for i in self.img_ids:
                 self.id_labelattr[i] = -1
+            self.coco.catToImgs = {k:v for k,v in sorted(self.coco.catToImgs.items(),key=lambda item:len(item[1]))}
             for i in self.coco.catToImgs.keys():
                 self.coco.catToImgs[i] = list(set(self.coco.catToImgs[i]))
                 # print(i,len(self.coco.catToImgs[i]))
                 if len(self.coco.catToImgs[i])<10:
                     print('catimgs fewer than 10')
                     raise Exception
-                cat_strong_image_ids =self.coco.catToImgs[i][0:(len(self.coco.catToImgs[i])//weak_ann_frac+len(self.coco.catToImgs[i])%weak_ann_frac)]
+                # cat_strong_image_ids =self.coco.catToImgs[i][0:(len(self.coco.catToImgs[i])//weak_ann_frac+len(self.coco.catToImgs[i])%weak_ann_frac)]
+                cat_strong_image_ids =self.coco.catToImgs[i][0:wandb.config.strong_shot*2]
                 self.cat_weak_ids[i] = []
                 self.cat_strong_ids[i] = []
+                strong_shot = 0
                 for j in self.coco.catToImgs[i]:
                     if j not in self.img_ids:
                         continue
                     if self.id_labelattr[j] != -1:
                         continue
-                    if j in cat_strong_image_ids:
+                    if j in cat_strong_image_ids and strong_shot<=wandb.config.strong_shot:
+                        strong_shot += 1
                         self.cat_strong_ids[i].append(j)
                         self.id_labelattr[j] = True
                     else:
                         self.cat_weak_ids[i].append(j)
                         self.id_labelattr[j] = False
             assert len(self.id_labelattr)==len(self.img_ids)
-            print('img_num:',len(self.img_ids))
-            print('allocating completed')
+            # print('img_num:',len(self.img_ids))
+            # print('allocating completed')
             indices = []
             cnt = 0
             for i in self.cat_strong_ids.keys():
+                random.shuffle(self.cat_strong_ids[i])
                 num_strong = len(self.cat_strong_ids[i])
                 cnt += num_strong
                 if num_strong == 0:
-                    continue
+                    print('error')
+                    raise Exception
                 if len(self.cat_weak_ids[i]) == 0:
                     print('error')
                     raise Exception
+                random.shuffle(self.cat_weak_ids[i])
                 for j in range(len(self.cat_weak_ids[i])):
                     indices.append([self.id_idx[self.cat_strong_ids[i][j % num_strong]],
                                     self.id_idx[self.cat_weak_ids[i][j]]])
@@ -123,6 +133,7 @@ class VocMsodDataset(CustomDataset):
                         self.id_labelattr[self.img_ids[i]] = False
 
                     indices.append(i)
+                    print('append',i)
             if additional_cnt&1:
                 indices = indices[0:-1]
             strong_cnt = 0
@@ -133,22 +144,6 @@ class VocMsodDataset(CustomDataset):
             wandb.config.images_num = len(self.img_ids)
             wandb.config.strong_label_percentage = cnt/len(self.img_ids)
             random_indices = torch.tensor(indices)
-            # random_indices = random_indices[0:4200]
-
-
-            # random_indice = torch.randperm(len(self.img_ids))
-            # random_indice = []
-            # for i in range(len(self.img_ids)):
-            #     random_indice.append([1,i])
-            # np.random.shuffle(random_indice)
-            # random_indices = np.concatenate(random_indice)
-
-            # random_indice = torch.cat((random_indice,torch.randperm(1860)))
-            # random_indices=torch.unique(random_indices)
-            # assert  (np.unique(random_indices.numpy()) == np.unique(random_indice.numpy())).all()
-            # random_indices = random_indice
-            # print(len(self.img_ids))
-            # print(len(random_indices))
             self.data_infos = [self.data_infos[i] for i in valid_inds]
             self.data_infos = [self.data_infos[i] for i in random_indices]
             if self.proposals is not None:
@@ -163,6 +158,8 @@ class VocMsodDataset(CustomDataset):
 
             # set group flag for the sampler
             self._set_group_flag()
+            # print('#'*100)
+            # print(len(self.proposals))
             # print(len(self),len(self.data_infos))
 
     def _set_group_flag(self):
@@ -542,6 +539,7 @@ class VocMsodDataset(CustomDataset):
         results = dict(img_info=img_info, ann_info=ann_info)
         if self.proposals is not None:
             results['proposals'] = self.proposals[idx]
+            # print(results['proposals'])
         self.pre_pipeline(results)
         results = self.pipeline(results)
         results['num_cls'] = self.num_classes

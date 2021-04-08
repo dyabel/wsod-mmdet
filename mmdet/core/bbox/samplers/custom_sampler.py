@@ -1,12 +1,22 @@
-from abc import ABCMeta, abstractmethod
-
 import torch
 
-from .sampling_result import SamplingResult
+from ..builder import BBOX_SAMPLERS
+from .base_sampler import BaseSampler
+from .custom_sampling_result import SamplingResult
 
 
-class BaseSampler(metaclass=ABCMeta):
-    """Base class of samplers."""
+@BBOX_SAMPLERS.register_module()
+class RandomSampler(BaseSampler):
+    """Random sampler.
+
+    Args:
+        num (int): Number of samples
+        pos_fraction (float): Fraction of positive samples
+        neg_pos_up (int, optional): Upper bound number of negative and
+            positive samples. Defaults to -1.
+        add_gt_as_proposals (bool, optional): Whether to add ground truth
+            boxes as proposals. Defaults to True.
+    """
 
     def __init__(self,
                  num,
@@ -14,22 +24,59 @@ class BaseSampler(metaclass=ABCMeta):
                  neg_pos_ub=-1,
                  add_gt_as_proposals=True,
                  **kwargs):
-        self.num = num
-        self.pos_fraction = pos_fraction
-        self.neg_pos_ub = neg_pos_ub
-        self.add_gt_as_proposals = add_gt_as_proposals
-        self.pos_sampler = self
-        self.neg_sampler = self
+        from mmdet.core.bbox import demodata
+        super(RandomSampler, self).__init__(num, pos_fraction, neg_pos_ub,
+                                            add_gt_as_proposals)
+        self.rng = demodata.ensure_rng(kwargs.get('rng', None))
 
-    @abstractmethod
+    def random_choice(self, gallery, num):
+        """Random select some elements from the gallery.
+
+        If `gallery` is a Tensor, the returned indices will be a Tensor;
+        If `gallery` is a ndarray or list, the returned indices will be a
+        ndarray.
+
+        Args:
+            gallery (Tensor | ndarray | list): indices pool.
+            num (int): expected sample num.
+
+        Returns:
+            Tensor or ndarray: sampled indices.
+        """
+        assert len(gallery) >= num
+
+        is_tensor = isinstance(gallery, torch.Tensor)
+        if not is_tensor:
+            if torch.cuda.is_available():
+                device = torch.cuda.current_device()
+            else:
+                device = 'cpu'
+            gallery = torch.tensor(gallery, dtype=torch.long, device=device)
+        perm = torch.randperm(gallery.numel(), device=gallery.device)[:num]
+        rand_inds = gallery[perm]
+        if not is_tensor:
+            rand_inds = rand_inds.cpu().numpy()
+        return rand_inds
+
     def _sample_pos(self, assign_result, num_expected, **kwargs):
-        """Sample positive samples."""
-        pass
+        """Randomly sample some positive samples."""
+        pos_inds = torch.nonzero(assign_result.gt_inds > 0, as_tuple=False)
+        if pos_inds.numel() != 0:
+            pos_inds = pos_inds.squeeze(1)
+        if pos_inds.numel() <= num_expected:
+            return pos_inds
+        else:
+            return self.random_choice(pos_inds, num_expected)
 
-    @abstractmethod
     def _sample_neg(self, assign_result, num_expected, **kwargs):
-        """Sample negative samples."""
-        pass
+        """Randomly sample some negative samples."""
+        neg_inds = torch.nonzero(assign_result.gt_inds == 0, as_tuple=False)
+        if neg_inds.numel() != 0:
+            neg_inds = neg_inds.squeeze(1)
+        if len(neg_inds) <= num_expected:
+            return neg_inds
+        else:
+            return self.random_choice(neg_inds, num_expected)
 
     def sample(self,
                assign_result,
@@ -67,6 +114,10 @@ class BaseSampler(metaclass=ABCMeta):
         # print(len(bboxes))
         if len(bboxes.shape) < 2:
             bboxes = bboxes[None, :]
+        if bboxes.size(1) == 5:
+            box_weight = bboxes[:, 4]
+        else:
+            box_weight = bboxes.new_ones(bboxes.size(0))
 
         bboxes = bboxes[:, :4]
         if gt_bboxes.size(1) == 5:
@@ -101,6 +152,6 @@ class BaseSampler(metaclass=ABCMeta):
             assign_result, num_expected_neg, bboxes=bboxes, **kwargs)
         neg_inds = neg_inds.unique()
 
-        sampling_result = SamplingResult(pos_inds, neg_inds, bboxes, gt_bboxes,gt_weights,
+        sampling_result = SamplingResult(pos_inds, neg_inds, bboxes,box_weight, gt_bboxes,gt_weights,
                                          assign_result, gt_flags)
         return sampling_result

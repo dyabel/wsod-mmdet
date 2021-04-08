@@ -12,6 +12,6 @@ log_level = 'INFO'
 load_from = None
 resume_from = None
 # resume_from = '/data1/dataset/dy/work_dirs/wsod_faster_voc/latest.pth'
-# resume_from = '../work_dirs/wsod_faster_voc_frac_1/latest.pth'
+# resume_from = '../work_dirs/wsod_faster_voc_frac_1/epoch_3.pth'
 workflow = [('train', 1)]
 custom_hooks = [dict(type='MyHook')]

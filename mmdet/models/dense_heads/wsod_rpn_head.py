@@ -220,3 +220,51 @@ class WSOD_RPNHead(RPNTestMixin, AnchorHead):
             proposal_list_strong = self.get_bboxes(*outs_strong, [img_metas[0]], cfg=proposal_cfg)
             proposal_list_weak = self.get_bboxes(*outs_weak, [img_metas[1]], cfg=proposal_cfg)
             return losses, [proposal_list_strong[0],proposal_list_weak[0]]
+
+    def forward_train_oam(self,
+                      x,
+                      img_metas,
+                      gt_bboxes,
+                      gt_labels=None,
+                      gt_bboxes_ignore=None,
+                      proposal_cfg=None,
+                      **kwargs):
+        """
+        Args:
+            x (list[Tensor]): Features from FPN.
+            img_metas (list[dict]): Meta information of each image, e.g.,
+                image size, scaling factor, etc.
+            gt_bboxes (Tensor): Ground truth bboxes of the image,
+                shape (num_gts, 4).
+            gt_labels (Tensor): Ground truth labels of each box,
+                shape (num_gts,).
+            gt_bboxes_ignore (Tensor): Ground truth bboxes to be
+                ignored, shape (num_ignored_gts, 4).
+            proposal_cfg (mmcv.Config): Test / postprocessing configuration,
+                if None, test_cfg would be used
+
+        Returns:
+            tuple:
+                losses: (dict[str, Tensor]): A dictionary of loss components.
+                proposal_list (list[Tensor]): Proposals of each image.
+        """
+        #duyu
+        x_strong = tuple([torch.unsqueeze(xx[0],0) for xx in x])
+        x_weak = tuple([torch.unsqueeze(xx[1],0) for xx in x])
+        outs_strong = self(x_strong)
+        outs_weak = self(x_weak)
+        if gt_labels is None:
+            loss_inputs = outs_strong + ([gt_bboxes[1]], [img_metas[1]])
+        else:
+            loss_inputs = outs_strong + ([gt_bboxes[1]], [gt_labels[1]], [img_metas[1]])
+        losses = self.loss(*loss_inputs, gt_bboxes_ignore=gt_bboxes_ignore)
+        if proposal_cfg is None:
+            losses['loss_rpn_cls'] = sum(losses['loss_rpn_cls'])
+            losses['loss_rpn_bbox'] = sum(losses['loss_rpn_bbox'])
+            return losses
+        else:
+            proposal_list_strong = self.get_bboxes(*outs_strong, [img_metas[0]], cfg=proposal_cfg)
+            proposal_list_weak = self.get_bboxes(*outs_weak, [img_metas[1]], cfg=proposal_cfg)
+            losses['loss_rpn_cls'] = sum(losses['loss_rpn_cls'])
+            losses['loss_rpn_bbox'] = sum(losses['loss_rpn_bbox'])*0
+            return losses, [proposal_list_strong[0],proposal_list_weak[0]]

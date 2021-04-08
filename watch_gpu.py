@@ -50,27 +50,24 @@ def get_cpu_info():
 # 主函数
 def main():
     times = 0
-    while True:
+    gpu_percentage = 1
+    while gpu_percentage>0.3:
         # 最大循环次数
-        if times < stopped_num:
-            # 打印当前时间
-            time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
-            # 获取CPU信息
-            # cpu_info = get_cpu_info()
-            # 获取GPU信息
-            # gpu_info = get_gpu_info()
-            gpu_percentage = get_gpu_info()
-            # print(gpu_percentage)
-            if gpu_percentage<0.3:
-                os.system('./exec.sh')
-                break
-            # 添加时间间隙
-            # print(cpu_info)
-            # print(gpu_info, '\n')
-            time.sleep(delay)
-            times += 1
-        else:
-            break
+        # 打印当前时间
+        time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
+        # 获取CPU信息
+        # cpu_info = get_cpu_info()
+        # 获取GPU信息
+        # gpu_info = get_gpu_info()
+        gpu_percentage = get_gpu_info()
+        # print(gpu_percentage)
+        # 添加时间间隙
+        # print(cpu_info)
+        # print(gpu_info, '\n')
+        time.sleep(delay)
+        times += 1
+
+    os.system('./exec.sh')
 
 
 if __name__ == '__main__':
