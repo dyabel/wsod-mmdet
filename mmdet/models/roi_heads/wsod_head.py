@@ -210,10 +210,9 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                               proposal_list,
                               gt_bboxes,
                               gt_labels,
-                              img_label,
                               gt_bboxes_ignore=None,
                               gt_masks=None):
-        img_level_label = img_label
+        img_level_label = gt_labels[1]
         #branch1
         losses_branch1,oam_bboxes,oam_labels = self.forward_train_branch1(x,img_metas,proposal_list,gt_bboxes,gt_labels,gt_bboxes_ignore,
                                                        gt_masks=None)
@@ -243,9 +242,9 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                      img_level_label,
                                                      max_iter=30,
                                                      )
-        # torch_device = gt_labels[0].get_device()
-        # gt_bboxes[1] = oam_bboxes[0].to(torch_device)
-        # gt_labels[1] = oam_labels[0].to(torch_device)
+        torch_device = gt_labels[0].get_device()
+        gt_bboxes[1] = oam_bboxes[0].to(torch_device)
+        gt_labels[1] = oam_labels[0].to(torch_device)
         # if oam_confidence>self.ss_cf_thr:
         #     oam_confidence = 100
 
