@@ -123,7 +123,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         labels2,idx2 = torch.sort(labels2)
         bboxes1 = bboxes1[idx1]
         bboxes2 = bboxes2[idx2]
-        if (torch.abs(bboxes1 - bboxes2) > 5).any():
+        if (torch.abs(bboxes1 - bboxes2) > 3).any():
             return False
         # print(bboxes1[0].unsqueeze(0),bboxes2[0].unsqueeze(0))
         # print(labels1,labels2)
@@ -155,7 +155,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         oam_bboxes, oam_labels = bboxes,labels
         if bboxes.size(0) == 0:
             # print('empty oam')
-            return wandb.config.empty_cf,[bboxes],[labels]
+            return 100,[bboxes],[labels]
 
         # begin iter
         k = 0
@@ -164,7 +164,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         while k < max_iter:
             k += 1
             if oam_bboxes.size(0) == 0:
-                return wandb.config.empty_cf,[oam_bboxes],[oam_labels]
+                return 100,[oam_bboxes],[oam_labels]
             oam_bboxes_next,oam_labels_next=self.oam_forward(x, oam_bboxes, img_level_label, img_metas)
             if self.match(bboxes1=oam_bboxes_next, bboxes2=oam_bboxes, labels1=oam_labels_next,
                           labels2=oam_labels):
@@ -177,7 +177,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                 count = 0
             oam_bboxes, oam_labels = oam_bboxes_next, oam_labels_next
         if T==max_iter:
-            T = 10000
+            T = 100
         return T,[oam_bboxes],[oam_labels]
 
 
@@ -210,9 +210,10 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                               proposal_list,
                               gt_bboxes,
                               gt_labels,
+                              img_label,
                               gt_bboxes_ignore=None,
                               gt_masks=None):
-        img_level_label = gt_labels[1]
+        img_level_label = img_label
         #branch1
         losses_branch1,oam_bboxes,oam_labels = self.forward_train_branch1(x,img_metas,proposal_list,gt_bboxes,gt_labels,gt_bboxes_ignore,
                                                        gt_masks=None)
@@ -240,16 +241,17 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                      oam_bboxes[0][:,:4],
                                                      oam_labels[0],
                                                      img_level_label,
-                                                     max_iter=wandb.config.empty_cf,
+                                                     max_iter=30,
                                                      )
-        torch_device = gt_labels[0].get_device()
-        gt_bboxes[1] = oam_bboxes[0].to(torch_device)
-        gt_labels[1] = oam_labels[0].to(torch_device)
+        # torch_device = gt_labels[0].get_device()
+        # gt_bboxes[1] = oam_bboxes[0].to(torch_device)
+        # gt_labels[1] = oam_labels[0].to(torch_device)
         # if oam_confidence>self.ss_cf_thr:
         #     oam_confidence = 100
-        if oam_confidence<wandb.config.ss_cf_thr or self.iters % 50 == 0 :
+
+        if oam_confidence<wandb.config.ss_cf_thr and self.iters % 50 == 0 :
                 visualize_oam_boxes(oam_bboxes[0][:,:4],oam_labels[0],img[1],img_metas,
-                                win_name='T= %d E = %d'%(oam_confidence,self.iters//566+5),show=False,
+                                win_name='T=%d E=%d'%(oam_confidence,self.iters//564),show=False,
                                 out_dir='../work_dirs/oam_bboxes3/',show_score_thr=0)
         losses_branch2 = self.forward_train_branch2(x,
                                                     img_metas,
