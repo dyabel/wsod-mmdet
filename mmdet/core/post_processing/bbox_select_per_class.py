@@ -31,7 +31,6 @@ def bbox_select_per_class(multi_bboxes,
     scores = multi_scores[:, :-1]
     gt_class_ids = (img_level_label>0).expand(scores.size(0),-1)
     scores = scores[gt_class_ids].view(multi_scores.size(0),-1)
-    scores = torch.sigmoid(scores)
     # exclude background category
     if multi_bboxes.shape[1] > 4:
         bboxes = multi_bboxes.view(multi_scores.size(0), -1, 4)

@@ -9,6 +9,7 @@ from mmcv.runner import auto_fp16, force_fp32
 from mmdet.models.losses import accuracy,img_level_accuracy
 from mmdet.models.builder import build_loss
 from mmdet.core.utils import convert_label
+from mmdet.core import multiclass_nms,bbox_select_per_class
 
 
 @HEADS.register_module()
@@ -549,6 +550,7 @@ class ConvFCWSODHead(BBoxHead):
                    rois,
                    cls_score,
                    bbox_pred,
+                    img_level_label,
                    img_shape,
                    scale_factor,
                    rescale=False,
@@ -577,12 +579,11 @@ class ConvFCWSODHead(BBoxHead):
         if cfg is None:
             return bboxes, scores
         else:
-            raise Exception
-            # det_bboxes, det_labels = multiclass_nms(bboxes, scores,
-            #                                         cfg.score_thr, cfg.nms,
-            #                                         cfg.max_per_img)
+            det_bboxes, det_labels = bbox_select_per_class(bboxes,scores,img_level_label,
+                                                    cfg.score_thr, cfg.nms,
+                                                    max_num=cfg.max_per_img)
 
-            # return det_bboxes, det_labels
+            return det_bboxes, det_labels
 
 
 @HEADS.register_module()

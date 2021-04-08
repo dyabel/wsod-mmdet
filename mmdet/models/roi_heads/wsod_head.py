@@ -37,7 +37,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         self.ss_cf_thr = wandb.config.ss_cf_thr
         self.oam_max_num = wandb.config.oam_max_num
         self.score_thr2 = wandb.config.score_thr2
-        self.oam_discount = 6
+        self.oam_discount = 1
         self.nms = 0.5
         # self.init_contrast_head(contrast_head)
 
@@ -123,9 +123,6 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         labels2,idx2 = torch.sort(labels2)
         bboxes1 = bboxes1[idx1]
         bboxes2 = bboxes2[idx2]
-        # print('#'*100)
-        # print(bboxes1[:2,:])
-        # print(bboxes2[:2,:])
         if (torch.abs(bboxes1 - bboxes2) > 5).any():
             return False
         # print(bboxes1[0].unsqueeze(0),bboxes2[0].unsqueeze(0))
@@ -179,6 +176,8 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             else:
                 count = 0
             oam_bboxes, oam_labels = oam_bboxes_next, oam_labels_next
+        if T==max_iter:
+            T = 10000
         return T,[oam_bboxes],[oam_labels]
 
 
@@ -192,30 +191,15 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         bbox_results = self._bbox_forward_strong_branch1(bbox_feats)
         img_shape = img_metas[0]['img_shape']
         scale_factors = img_metas[0]['scale_factor']
-        bboxes, _ = self.bbox_head.compute_bboxes(
+        oam_bboxes, oam_labels = self.bbox_head.compute_bboxes(
             rois,
             bbox_results['cls_score'],
             bbox_results['bbox_pred'],
+            img_level_label,
             img_shape,
             scale_factors,
             rescale=False,
-            cfg=None)
-
-        oam_bboxes, oam_labels = multiclass_nms(
-            bboxes,
-            bbox_results['cls_score'],
-            score_thr=self.score_thr2,
-            nms_cfg={'iou_threshold': self.nms},
-            max_num=self.oam_max_num,
-        )
-        # oam_bboxes, oam_labels = bbox_select_per_class(
-        #     bboxes,
-        #     bbox_results['cls_score'],
-        #     img_level_label,
-        #     score_thr=self.score_thr2,
-        #     nms_cfg={'iou_threshold': self.nms},
-        #     max_num=self.oam_max_num,
-        # )
+            cfg=self.test_cfg)
         return oam_bboxes[:,:4],oam_labels
 
     #duyu
@@ -234,39 +218,39 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                        gt_masks=None)
 
         self.iters += 1
-        if self.iters % 1000 == 0 and self.iters>wandb.config.warm_iter:
-            self.ss_cf_thr -= 1
-            self.ss_cf_thr = max(6,self.ss_cf_thr)
-            self.oam_max_num += 1
-            self.score_thr2 += 0.01
-            self.score_thr2 = min(self.score_thr2,0.7)
-            self.oam_discount -= 0.5
-            self.oam_discount = max(1,self.oam_discount)
-            self.oam_max_num = min(self.oam_max_num,18)
-            print('nms:',self.nms)
-            print('oam_discount:',self.oam_discount)
-            print('ss_cf_thr:',self.ss_cf_thr)
-            print('oam_max_num:', self.oam_max_num)
-        torch_device = gt_labels[0].get_device()
-        gt_bboxes[1] = oam_bboxes[0].to(torch_device)
-        gt_labels[1] = oam_labels[0].to(torch_device)
+        # if self.iters % 1000 == 0 and self.iters>wandb.config.warm_iter:
+            # self.ss_cf_thr -= 1
+            # self.ss_cf_thr = max(6,self.ss_cf_thr)
+            # self.oam_max_num += 1
+            # self.score_thr2 += 0.01
+            # self.score_thr2 = min(self.score_thr2,0.7)
+            # self.oam_discount -= 0.5
+            # self.oam_discount = max(1,self.oam_discount)
+            # self.oam_max_num = min(self.oam_max_num,20)
+            # print('nms:',self.nms)
+            # print('oam_discount:',self.oam_discount)
+            # print('ss_cf_thr:',self.ss_cf_thr)
+            # print('oam_max_num:', self.oam_max_num)
         if self.iters < wandb.config.warm_iter:
-                oam_confidence = 30
+                oam_confidence = 100
         else:
             x_weak = tuple([torch.unsqueeze(xx[1], 0) for xx in x])
-            oam_confidence,_,_ = self.OAM_Confidence(x_weak,
+            oam_confidence,oam_bboxes,oam_labels = self.OAM_Confidence(x_weak,
                                                      img_metas,
                                                      oam_bboxes[0][:,:4],
                                                      oam_labels[0],
                                                      img_level_label,
                                                      max_iter=wandb.config.empty_cf,
                                                      )
-        if oam_confidence>self.ss_cf_thr:
-            oam_confidence = 30
-        if oam_confidence<wandb.config.ss_cf_thr and self.iters % 10 == 0 :
+        torch_device = gt_labels[0].get_device()
+        gt_bboxes[1] = oam_bboxes[0].to(torch_device)
+        gt_labels[1] = oam_labels[0].to(torch_device)
+        # if oam_confidence>self.ss_cf_thr:
+        #     oam_confidence = 100
+        if oam_confidence<wandb.config.ss_cf_thr or self.iters % 50 == 0 :
                 visualize_oam_boxes(oam_bboxes[0][:,:4],oam_labels[0],img[1],img_metas,
-                                win_name='T= %d E = %d'%(oam_confidence,self.iters//1112 + 4),show=False,
-                                out_dir='../work_dirs/oam_bboxes1/',show_score_thr=0)
+                                win_name='T= %d E = %d'%(oam_confidence,self.iters//566+5),show=False,
+                                out_dir='../work_dirs/oam_bboxes3/',show_score_thr=0)
         losses_branch2 = self.forward_train_branch2(x,
                                                     img_metas,
                                                     proposal_list,
@@ -518,6 +502,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                 rois_strong,
                 bbox_results_strong['cls_score'],
                 bbox_results_strong['bbox_pred'],
+                img_level_label_for_strong,
                 img_shape,
                 scale_factors,
                 rescale=False,
@@ -538,6 +523,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             rois_weak,
             bbox_results_weak_pseudo['cls_score'],
             bbox_results_weak_pseudo['bbox_pred'],
+            gt_labels[1],
             img_shape,
             scale_factors,
             rescale=False,
@@ -606,18 +592,18 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             rois_weak,
             bbox_results_weak_pseudo['cls_score'],
             bbox_results_weak_pseudo['bbox_pred'],
+            gt_labels[1],
             img_shape,
             scale_factors,
             rescale=False,
             cfg=None)
-        oam_bboxes_weak, oam_labels_weak = multiclass_nms(
-                                                                 bboxes_weak,
-                                                                 bbox_results_weak_pseudo['cls_score'],
-                                                                 gt_labels[1],
-                                                                 score_thr=self.score_thr2,
-                                                                 nms_cfg={'iou_threshold': self.nms},
-                                                                 max_num=self.oam_max_num,
-                                                                 )
+        oam_bboxes_weak, oam_labels_weak = bbox_select_per_class(bboxes_weak,
+                                                          bbox_results_weak_pseudo['cls_score'],
+                                                          gt_labels[1],
+                                                          score_thr=self.score_thr2,
+                                                          nms_cfg={'iou_threshold': self.nms},
+                                                          max_num=self.oam_max_num,
+                                                          )
 
         oam_bboxes = []
         oam_labels = []

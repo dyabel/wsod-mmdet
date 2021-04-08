@@ -53,9 +53,7 @@ class VocMsodDataset(CustomDataset):
         super(VocMsodDataset,self).__init__(ann_file,pipeline,classes=classes,data_root=data_root,
                                          img_prefix=img_prefix,seg_prefix=seg_prefix,proposal_file=proposal_file,
                                          test_mode=test_mode,filter_empty_gt=filter_empty_gt)
-        print('proposal_file:',proposal_file)
         # filter images too small and containing no annotations
-        print('classes',classes)
         print('weak_ann_frac%d'%weak_ann_frac)
         random.seed(time.time())
         if 'VOC2007' in self.img_prefix:
