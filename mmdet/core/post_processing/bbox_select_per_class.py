@@ -29,6 +29,9 @@ def bbox_select_per_class(multi_bboxes,
 
     num_classes = multi_scores.size(1) - 1
     scores = multi_scores[:, :-1]
+    scores = torch.softmax(scores,dim=1)
+    if img_level_label is None:
+        img_level_label = multi_scores.new_ones(num_classes)
     gt_class_ids = (img_level_label>0).expand(scores.size(0),-1)
     scores = scores[gt_class_ids].view(multi_scores.size(0),-1)
     # exclude background category
@@ -43,6 +46,7 @@ def bbox_select_per_class(multi_bboxes,
     bboxes = bboxes.reshape(-1, 4)
     scores = scores.reshape(-1)
     labels = labels.reshape(-1)
+    # valid_mask = scores > 1/img_level_label.sum()-0.0001
     valid_mask = scores > score_thr
     inds = valid_mask.nonzero(as_tuple=False).squeeze(1)
     bboxes, scores, labels = bboxes[inds], scores[inds], labels[inds]
@@ -53,10 +57,10 @@ def bbox_select_per_class(multi_bboxes,
         y1 = box[1]
         x2 = box[2]
         y2 = box[3]
-        if (y2-y1)*(x2-x1) < 5:
+        if (y2-y1)*(x2-x1) < 3:
             keep[i] = False
-        if (y2-y1)/(x2-x1) > 10 or (y2-y1)/(x2-x1)<0.1:
-            keep[i] = False
+        # if (y2-y1)/(x2-x1) > 10 or (y2-y1)/(x2-x1)<0.1:
+        #     keep[i] = False
     bboxes = bboxes[keep]
     scores = scores[keep]
     labels = labels[keep]
@@ -93,6 +97,8 @@ def first_pass_filter(multi_bboxes,
 
     num_classes = multi_scores.size(1) - 1
     # multi_scores = torch.sigmoid(multi_scores)
+    if img_level_label is None:
+        img_level_label = multi_scores.new_ones(num_classes)
     scores = multi_scores[:, :-1]
     gt_class_ids = (img_level_label>0).expand(scores.size(0),-1)
     scores = scores[gt_class_ids].view(multi_scores.size(0),-1)
@@ -117,10 +123,10 @@ def first_pass_filter(multi_bboxes,
         y1 = box[1]
         x2 = box[2]
         y2 = box[3]
-        if (y2-y1)*(x2-x1) < 5:
+        if (y2-y1)*(x2-x1) < 3:
             # print('too small')
             keep[i] = False
-        if (y2-y1)/(x2-x1) > 10 or (y2-y1)/(x2-x1)<0.1:
+        if (y2-y1)/(x2-x1) > 100 or (y2-y1)/(x2-x1)<0.01:
             keep[i] = False
     bboxes = bboxes[keep]
     scores = scores[keep]

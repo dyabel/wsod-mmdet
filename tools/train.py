@@ -88,7 +88,7 @@ def main():
     timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
     os.environ["WANDB_RUN_GROUP"] = "experiment-" + wandb.util.generate_id()
     args = parse_args()
-    wandb.init(project='test')
+    wandb.init(project=args.name)
     # hyperparameter_defaults = dict(
     #     oam_max_num=10,
     #     score_thr1=0.3,
@@ -97,7 +97,7 @@ def main():
     #     lr=0.001,
     # )
     wandb.config.oam_max_num = 100
-    wandb.config.score_thr2 = 0.05
+    wandb.config.score_thr2 = 0.1
     wandb.config.empty_cf = 30
     wandb.config.ss_cf_thr = 50
     wandb.config.lr = 0.008

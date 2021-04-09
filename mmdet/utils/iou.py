@@ -41,6 +41,6 @@ def iou(box_a, box_b):
               (box_b[:, 3]-box_b[:, 1])).unsqueeze(0).expand_as(inter)  # [A,B]
     union = area_a + area_b - inter
     return torch.true_divide(inter,union)  # [A,B]
-# a = torch.tensor([[1,2,3,4]])
+# a = torch.tensor([[1,2,3,4],[1,2,3,4]])
 # b = torch.tensor([[0,0,2,3]])
 # print(iou(a,b))

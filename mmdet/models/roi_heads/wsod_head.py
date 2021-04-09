@@ -113,34 +113,27 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
     def match(self,bboxes1=None,bboxes2=None,labels1=None,labels2=None):
         labels1 = labels1.detach().cpu()
         labels2 = labels2.detach().cpu()
-        if len(labels1)!=len(labels2):
-            return False
-        if (len(torch.bincount(labels1))!=len(torch.bincount(labels2))):
-            return False
-        if (torch.bincount(labels1)!=torch.bincount(labels2)).any():
-            return False
+        flag = True
+        weight = bboxes1.new_ones(bboxes1.size(0))
+        if len(labels1)!=len(labels2) or len(torch.bincount(labels1))!=len(torch.bincount(labels2)) or (torch.bincount(labels1)!=torch.bincount(labels2)).any():
+            flag = False
         labels1,idx1 = torch.sort(labels1)
         labels2,idx2 = torch.sort(labels2)
         bboxes1 = bboxes1[idx1]
         bboxes2 = bboxes2[idx2]
-        if (torch.abs(bboxes1 - bboxes2) > 3).any():
-            return False
-        # print(bboxes1[0].unsqueeze(0),bboxes2[0].unsqueeze(0))
-        # print(labels1,labels2)
-        # matched = []
-        # for i,ii in enumerate(labels1):
-        #     flag = False
-        #     for j in torch.where(labels2==ii)[0]:
-        #         if j in matched:
-        #             continue
-        #         if iou(bboxes1[i].unsqueeze(0),bboxes2[j].unsqueeze(0))[0][0]>0.6:
-        #             matched.append(j)
-        #             flag = True
-        #             break
-        #     if not flag: return False
-        # if len(matched)!=len(labels2):
-        #     return False
-        return True
+        for i,box in enumerate(bboxes1):
+            ious = iou(box.unsqueeze(0),bboxes2[torch.where(labels2==labels1[i])[0]])
+            if ious.size(1) == 0:
+                flag = False
+                weight[i] = 0
+            else:
+                max_iou,index = torch.max(ious,dim=1)
+                if max_iou<0.5:
+                    flag = False
+                    weight[i] = 0
+                else:
+                    weight[i] = max_iou
+        return flag,weight
 
 
     @torch.no_grad()
@@ -152,38 +145,58 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                        img_level_label,
                        max_iter=30,
                         ):
-        oam_bboxes, oam_labels = bboxes,labels
         if bboxes.size(0) == 0:
-            # print('empty oam')
-            return 100,[bboxes],[labels]
+            for i in range(len(bboxes)):
+                bboxes[i, 4] = 0
+            return 100,bboxes,labels
+        bboxes,labels = self.oam_forward(x,bboxes[:,:4],img_level_label,img_metas,nms=True)
+        oam_bboxes,oam_labels = bboxes,labels
 
         # begin iter
         k = 0
         T = max_iter
+        average_weight = bboxes.new_zeros(bboxes.size(0))
+        # oam_present = bboxes.new_ones(bboxes.size(0))
         count = 0
         while k < max_iter:
             k += 1
             if oam_bboxes.size(0) == 0:
-                return 100,[oam_bboxes],[oam_labels]
-            oam_bboxes_next,oam_labels_next=self.oam_forward(x, oam_bboxes, img_level_label, img_metas)
-            if self.match(bboxes1=oam_bboxes_next, bboxes2=oam_bboxes, labels1=oam_labels_next,
-                          labels2=oam_labels):
+                for i in range(len(bboxes)):
+                    bboxes[i, 4] = 0
+                return 100,bboxes,labels
+            oam_bboxes_next,oam_labels_next=self.oam_forward(x, oam_bboxes[:,:4], img_level_label, img_metas,nms=True)
+            flag,_ = self.match(bboxes1=oam_bboxes[:,:4],
+                                     bboxes2=oam_bboxes_next[:,:4],
+                                     labels1=oam_labels,
+                                     labels2=oam_labels_next)
+            # oam_present[oam_present.nonzero(as_tuple=True)][weight.nonzero(as_tuple=True)]=0
+            #calculate box weight
+            _,weight = self.match(bboxes1=bboxes[:,:4],
+                                     bboxes2=oam_bboxes_next[:,:4],
+                                     labels1=labels,
+                                     labels2=oam_labels_next)
+
+            average_weight += weight
+            if flag:
                 count += 1
                 if count == 3:
                     T = k
                     k = max_iter + 1
+                    average_weight = average_weight/T
                     break
             else:
                 count = 0
             oam_bboxes, oam_labels = oam_bboxes_next, oam_labels_next
-        if T==max_iter:
+        if T == max_iter:
             T = 100
-        return T,[oam_bboxes],[oam_labels]
+        for i in range(len(bboxes)):
+            bboxes[i,4] = average_weight[i]
+        return T,bboxes,labels
 
 
     #duyu
     @torch.no_grad()
-    def oam_forward(self,x,oam_bboxes,img_level_label,img_metas):
+    def oam_forward(self,x,oam_bboxes,img_level_label,img_metas,nms=False):
         rois = bbox2roi([oam_bboxes])
         bbox_feats = self.bbox_roi_extractor(
             x[:self.bbox_roi_extractor.num_inputs], rois)
@@ -191,16 +204,35 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         bbox_results = self._bbox_forward_strong_branch1(bbox_feats)
         img_shape = img_metas[0]['img_shape']
         scale_factors = img_metas[0]['scale_factor']
-        oam_bboxes, oam_labels = self.bbox_head.compute_bboxes(
-            rois,
-            bbox_results['cls_score'],
-            bbox_results['bbox_pred'],
-            img_level_label,
-            img_shape,
-            scale_factors,
-            rescale=False,
-            cfg=self.test_cfg)
-        return oam_bboxes[:,:4],oam_labels
+        if nms:
+            oam_bboxes, oam_labels = self.bbox_head.compute_bboxes(
+                rois,
+                bbox_results['cls_score'],
+                bbox_results['bbox_pred'],
+                img_level_label,
+                img_shape,
+                scale_factors,
+                rescale=False,
+                cfg=None)
+            oam_bboxes, oam_labels = bbox_select_per_class(oam_bboxes,
+                                                          bbox_results['cls_score'],
+                                                          img_level_label,
+                                                          score_thr=self.score_thr2,
+                                                          nms_cfg={'iou_threshold': self.nms},
+                                                          max_num=self.oam_max_num,
+                                                          )
+        else:
+
+            oam_bboxes,oam_labels = self.bbox_head.compute_bboxes(
+                rois,
+                bbox_results['cls_score'],
+                bbox_results['bbox_pred'],
+                img_level_label,
+                img_shape,
+                scale_factors,
+                rescale=False,
+                cfg=self.test_cfg)
+        return oam_bboxes,oam_labels
 
     #duyu
     def forward_train(self,
@@ -218,40 +250,27 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                        gt_masks=None)
 
         self.iters += 1
-        # if self.iters % 1000 == 0 and self.iters>wandb.config.warm_iter:
-            # self.ss_cf_thr -= 1
-            # self.ss_cf_thr = max(6,self.ss_cf_thr)
-            # self.oam_max_num += 1
-            # self.score_thr2 += 0.01
-            # self.score_thr2 = min(self.score_thr2,0.7)
-            # self.oam_discount -= 0.5
-            # self.oam_discount = max(1,self.oam_discount)
-            # self.oam_max_num = min(self.oam_max_num,20)
-            # print('nms:',self.nms)
-            # print('oam_discount:',self.oam_discount)
-            # print('ss_cf_thr:',self.ss_cf_thr)
-            # print('oam_max_num:', self.oam_max_num)
         if self.iters < wandb.config.warm_iter:
                 oam_confidence = 100
         else:
             x_weak = tuple([torch.unsqueeze(xx[1], 0) for xx in x])
             oam_confidence,oam_bboxes,oam_labels = self.OAM_Confidence(x_weak,
                                                      img_metas,
-                                                     oam_bboxes[0][:,:4],
-                                                     oam_labels[0],
+                                                     oam_bboxes,
+                                                     oam_labels,
                                                      img_level_label,
                                                      max_iter=30,
                                                      )
         torch_device = gt_labels[0].get_device()
-        gt_bboxes[1] = oam_bboxes[0].to(torch_device)
-        gt_labels[1] = oam_labels[0].to(torch_device)
-        # if oam_confidence>self.ss_cf_thr:
-        #     oam_confidence = 100
+        gt_bboxes[1] = oam_bboxes.to(torch_device)
+        gt_labels[1] = oam_labels.to(torch_device)
+        if oam_confidence>self.ss_cf_thr:
+            oam_confidence = 100
 
-        if oam_confidence<wandb.config.ss_cf_thr and self.iters % 50 == 0 :
-                visualize_oam_boxes(oam_bboxes[0][:,:4],oam_labels[0],img[1],img_metas,
+        if oam_confidence<self.ss_cf_thr and self.iters % 50 in [1,2,3]:
+                visualize_oam_boxes(oam_bboxes,oam_labels,img[1],img_metas,
                                 win_name='T=%d E=%d'%(oam_confidence,self.iters//564),show=False,
-                                out_dir='../work_dirs/oam_bboxes3/',show_score_thr=0)
+                                out_dir='../work_dirs/oam_bboxes3/',show_score_thr=0.3)
         losses_branch2 = self.forward_train_branch2(x,
                                                     img_metas,
                                                     proposal_list,
@@ -263,7 +282,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         losses = dict()
         losses.update(losses_branch1)
         losses.update(losses_branch2)
-        return losses,oam_bboxes[0],oam_labels[0],oam_confidence
+        return losses,oam_bboxes,oam_labels,oam_confidence
     #duyu
     def forward_train_branch1(self,
                       x,
@@ -606,11 +625,11 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                           max_num=self.oam_max_num,
                                                           )
 
-        oam_bboxes = []
-        oam_labels = []
-        oam_bboxes.append(oam_bboxes_weak)
-        oam_labels.append(oam_labels_weak.to(torch_device))
-        return bbox_results_strong, bbox_results_weak, oam_bboxes, oam_labels
+        # oam_bboxes = []
+        # oam_labels = []
+        # oam_bboxes.append(oam_bboxes_weak)
+        # oam_labels.append(oam_labels_weak.to(torch_device))
+        return bbox_results_strong, bbox_results_weak, oam_bboxes_weak, oam_labels_weak.to(torch_device)
     #duyu
     def contrast_forward_train(self,
                          x,
@@ -741,7 +760,8 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
 
         bbox_targets_weak_branch2 = self.bbox_head.get_targets([sampling_results[1]],[gt_bboxes[1]],[gt_labels[1]],self.train_cfg)
         labels,label_weights,bbox_targets,bbox_weights = bbox_targets_weak_branch2
-        label_weights = label_weights.new_ones(label_weights.size(0))
+        # print(label_weights)
+        # label_weights = label_weights.new_ones(label_weights.size(0))
         avg_factor = max(torch.sum(label_weights > 0).float().item(), 1.)
         acc_weak = accuracy(bbox_results_weak_branch2['cls_score'],labels)
         loss_bbox_weak_branch2 = dict()

@@ -180,9 +180,9 @@ class WSOD_RPN(BaseDetector):
                                                                     gt_bboxes_ignore, gt_masks,
                                                                     **kwargs)
         losses.update(wsod_losses)
-        # gt_bboxes[1] = oam_bboxes[:,:4]
-        # gt_labels[1] = oam_labels
-        #
+        gt_bboxes[1] = oam_bboxes[:,:4]
+        gt_labels[1] = oam_labels
+
         rpn_losses_oam, proposal_list = self.rpn_head.forward_train_oam(
             x,
             img_metas,
