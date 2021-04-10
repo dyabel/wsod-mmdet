@@ -263,8 +263,8 @@ class WSOD_RPNHead(RPNTestMixin, AnchorHead):
             losses['loss_rpn_bbox'] = sum(losses['loss_rpn_bbox'])
             return losses
         else:
-            proposal_list_strong = self.get_bboxes(*outs_strong, [img_metas[0]], cfg=proposal_cfg)
-            proposal_list_weak = self.get_bboxes(*outs_weak, [img_metas[1]], cfg=proposal_cfg)
+            # proposal_list_strong = self.get_bboxes(*outs_strong, [img_metas[0]], cfg=proposal_cfg)
+            # proposal_list_weak = self.get_bboxes(*outs_weak, [img_metas[1]], cfg=proposal_cfg)
             losses['loss_rpn_cls'] = sum(losses['loss_rpn_cls'])
-            losses['loss_rpn_bbox'] = sum(losses['loss_rpn_bbox'])*0
-            return losses, [proposal_list_strong[0],proposal_list_weak[0]]
+            losses['loss_rpn_bbox'] = sum(losses['loss_rpn_bbox'])
+            return losses

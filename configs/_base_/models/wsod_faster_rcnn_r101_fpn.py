@@ -1,9 +1,9 @@
 model = dict(
     type='WSOD_RPN',
-    pretrained='torchvision://resnet50',
+    pretrained='torchvision://resnet101',
     backbone=dict(
         type='ResNet',
-        depth=50,
+        depth=101,
         num_stages=4,
         out_indices=(0, 1, 2, 3),
         frozen_stages=1,
@@ -32,7 +32,7 @@ model = dict(
             type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
         loss_bbox=dict(type='SmoothL1Loss', loss_weight=1.0)),
     wsod_head=dict(
-        type='WsodContrastHead',
+        type='WsodHead',
         bbox_roi_extractor=dict(
             type='SingleRoIExtractor',
             roi_layer=dict(type='RoIAlign', output_size=7, sampling_ratio=0),
@@ -53,17 +53,7 @@ model = dict(
                 type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
             loss_cls_weak=dict(
                 type='MyCrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
-            loss_bbox=dict(type='SmoothL1Loss', loss_weight=1.0)),
-    contrast_head=dict(
-        type='BaseContrastHead',
-        encoder_k=dict(
-            type='BaseEncoderHead'
-        ),
-        encoder_q=dict(
-            type='BaseEncoderHead'
-        ),
-        loss=dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)
-    )),
+            loss_bbox=dict(type='SmoothL1Loss', loss_weight=1.0))),
     # model training and testing settings
     train_cfg=dict(
         rpn=dict(
@@ -102,6 +92,12 @@ model = dict(
                 type='RandomSampler',
                 num=512,
                 pos_fraction=0.25,
+                neg_pos_ub=-1,
+                add_gt_as_proposals=True),
+            second_pass_sampler=dict(
+                type='RandomSampler',
+                num=512,
+                pos_fraction=1,
                 neg_pos_ub=-1,
                 add_gt_as_proposals=True),
             pos_weight=-1,

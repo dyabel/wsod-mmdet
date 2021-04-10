@@ -180,10 +180,10 @@ class WSOD_RPN(BaseDetector):
                                                                     gt_bboxes_ignore, gt_masks,
                                                                     **kwargs)
         losses.update(wsod_losses)
-        # gt_bboxes[1] = oam_bboxes[:,:4]
+        gt_bboxes[1] = oam_bboxes[:,:4]
         # gt_labels[1] = oam_labels
         #
-        rpn_losses_oam, proposal_list = self.rpn_head.forward_train_oam(
+        rpn_losses_oam = self.rpn_head.forward_train_oam(
             x,
             img_metas,
             gt_bboxes,
@@ -191,10 +191,11 @@ class WSOD_RPN(BaseDetector):
             gt_bboxes_ignore=gt_bboxes_ignore,
             proposal_cfg=proposal_cfg)
         rpn_losses = dict()
-        rpn_losses['loss_rpn_bbox_oam'] = rpn_losses_oam['loss_rpn_bbox']
         if oam_confidence > wandb.config.ss_cf_thr:
-            rpn_losses['loss_rpn_cls_oam'] = rpn_losses_oam['loss_rpn_cls'] * 0
+            rpn_losses['loss_rpn_bbox_oam'] = rpn_losses_oam['loss_rpn_bbox']*0
+            rpn_losses['loss_rpn_cls_oam'] = rpn_losses_oam['loss_rpn_cls']*0
         else:
+            rpn_losses['loss_rpn_bbox_oam'] = rpn_losses_oam['loss_rpn_bbox']
             rpn_losses['loss_rpn_cls_oam'] = rpn_losses_oam['loss_rpn_cls']
         losses.update(rpn_losses)
 

@@ -1,5 +1,5 @@
 _base_ = [
-    '../_base_/models/wsod_moco_faster_rcnn_r50_fpn.py',
+    '../_base_/models/wsod_faster_rcnn_r101_fpn.py',
     '../_base_/datasets/msod_voc_detection07.py',
     '../_base_/schedules/schedule_msod_voc.py', '../_base_/voc_wsod_runtime.py'
 ]
@@ -42,11 +42,11 @@ data = dict(
     samples_per_gpu=2,
     workers_per_gpu=2,
     train=dict(
-        proposal_file=data_root + 'proposals/rpn_r101_fpn_voc_train.pkl',
+        proposal_file=data_root + 'proposals/rpn_r101_fpn_voc_trainval2007.pkl',
         pipeline=train_pipeline),
     val=dict(
-        proposal_file=data_root + 'proposals/rpn_r101_fpn_voc_val.pkl',
+        proposal_file=data_root + 'proposals/rpn_r101_fpn_voc_test2007.pkl',
         pipeline=test_pipeline),
     test=dict(
-        proposal_file=data_root + 'proposals/rpn_r101_fpn_voc_val.pkl',
+        proposal_file=data_root + 'proposals/rpn_r101_fpn_voc_test2007.pkl',
         pipeline=test_pipeline))

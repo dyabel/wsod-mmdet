@@ -30,7 +30,7 @@ model = dict(
             target_stds=[1.0, 1.0, 1.0, 1.0]),
         loss_cls=dict(
             type='CrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
-        loss_bbox=dict(type='L1Loss', loss_weight=1.0)),
+        loss_bbox=dict(type='SmoothL1Loss', loss_weight=1.0)),
     wsod_head=dict(
         type='WsodHead',
         bbox_roi_extractor=dict(
