@@ -20,6 +20,7 @@ from .wsod_head import WsodHead
 from .wsod_contrast_head import WsodContrastHead
 from .embed_roi_head import EmbedRoIHead
 from .wsod_embedding_head import WsodEmbedHead
+from .wsod_np_head import WsodNPHead
 
 __all__ = [
     'BaseRoIHead', 'CascadeRoIHead', 'DoubleHeadRoIHead', 'MaskScoringRoIHead',
@@ -29,5 +30,5 @@ __all__ = [
     'HTCMaskHead', 'FusedSemanticHead', 'GridHead', 'MaskIoUHead',
     'SingleRoIExtractor', 'PISARoIHead', 'PointRendRoIHead', 'MaskPointHead',
     'CoarseMaskHead', 'DynamicRoIHead', 'SparseRoIHead', 'TridentRoIHead',
-    'WsodHead','WsodContrastHead','EmbedRoIHead','WsodEmbedHead'
+    'WsodHead','WsodContrastHead','EmbedRoIHead','WsodEmbedHead','WsodNPHead'
 ]

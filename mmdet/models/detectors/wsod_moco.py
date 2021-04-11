@@ -5,10 +5,11 @@ import torch.nn as nn
 from ..builder import DETECTORS, build_backbone, build_head, build_neck
 from .base import BaseDetector
 from mmdet.core import convert_label
+import wandb
 
 
 @DETECTORS.register_module()
-class WSOD(BaseDetector):
+class WSOD_MOCO(BaseDetector):
     """Base class for two-stage detectors.
 
     Two-stage detectors typically consisting of a region proposal network and a
@@ -23,7 +24,7 @@ class WSOD(BaseDetector):
                  train_cfg=None,
                  test_cfg=None,
                  pretrained=None):
-        super(WSOD, self).__init__()
+        super(WSOD_MOCO, self).__init__()
         self.backbone = build_backbone(backbone)
 
         if neck is not None:
@@ -71,7 +72,7 @@ class WSOD(BaseDetector):
             pretrained (str, optional): Path to pre-trained weights.
                 Defaults to None.
         """
-        super(WSOD, self).init_weights(pretrained)
+        super(WSOD_MOCO, self).init_weights(pretrained)
         self.backbone.init_weights(pretrained=pretrained)
         if self.with_neck:
             if isinstance(self.neck, nn.Sequential):
@@ -115,6 +116,7 @@ class WSOD(BaseDetector):
                       gt_bboxes,
                       gt_labels,
                       num_cls = 20,
+                      ids=None,
                       strong_label=None,
                       gt_bboxes_ignore=None,
                       gt_masks=None,
@@ -148,43 +150,56 @@ class WSOD(BaseDetector):
         Returns:
             dict[str, Tensor]: a dictionary of loss components
         """
+        # print('*'*100)
+        # print(gt_labels)
+        if (strong_label==-1).any():
+            raise Exception
+        assert strong_label[0] and not strong_label[1]
         x = self.extract_feat(img)
         losses = dict()
-        gt_bboxes[1] = proposals[1]
-        gt_labels[1] = convert_label(gt_labels[1],num_cls[1])
+        gt_labels[1],_ = convert_label(gt_labels[1],num_cls[1])
+        gt_bboxes[1] = None
 
 
         # RPN forward and loss
         if self.with_rpn:
             proposal_cfg = self.train_cfg.get('rpn_proposal',
                                               self.test_cfg.rpn)
-            if strong_label.any():
-                rpn_losses, proposal_list = self.rpn_head.forward_train_strong(
-                    x,
-                    img_metas,
-                    gt_bboxes,
-                    gt_labels=None,
-                    gt_bboxes_ignore=gt_bboxes_ignore,
-                    proposal_cfg=proposal_cfg)
-                losses.update(rpn_losses)
-            else:
-                proposal_list_weak = self.rpn_head.forward_train_weak(
-                    x,
-                    img_metas,
-                    gt_labels=None,
-                    gt_bboxes_ignore=gt_bboxes_ignore,
-                    proposal_cfg=proposal_cfg)
-
-
+            rpn_losses, proposal_list = self.rpn_head.forward_train(
+                x,
+                img_metas,
+                gt_bboxes,
+                gt_labels=None,
+                gt_bboxes_ignore=gt_bboxes_ignore,
+                proposal_cfg=proposal_cfg)
+            losses.update(rpn_losses)
         else:
             proposal_list = proposals
-        wsod_losses = self.wsod_head.forward_train(x, img_metas, proposal_list,
+        gt_bboxes[1] = proposal_list[1]
+        wsod_losses,oam_bboxes,oam_labels,oam_confidence = self.wsod_head.forward_train(x,img, img_metas, proposal_list,
                                                                     gt_bboxes, gt_labels,
                                                                     gt_bboxes_ignore, gt_masks,
                                                                     **kwargs)
-
-
         losses.update(wsod_losses)
+        gt_bboxes[1] = oam_bboxes[:,:4]
+        # gt_labels[1] = oam_labels
+        #
+        rpn_losses_oam = self.rpn_head.forward_train_oam(
+            x,
+            img_metas,
+            gt_bboxes,
+            gt_labels=None,
+            gt_bboxes_ignore=gt_bboxes_ignore,
+            proposal_cfg=proposal_cfg)
+        rpn_losses = dict()
+        if oam_confidence > wandb.config.ss_cf_thr:
+            rpn_losses['loss_rpn_bbox_oam'] = rpn_losses_oam['loss_rpn_bbox']*0
+            rpn_losses['loss_rpn_cls_oam'] = rpn_losses_oam['loss_rpn_cls']*0
+        else:
+            rpn_losses['loss_rpn_bbox_oam'] = rpn_losses_oam['loss_rpn_bbox']
+            rpn_losses['loss_rpn_cls_oam'] = rpn_losses_oam['loss_rpn_cls']
+        losses.update(rpn_losses)
+
         return losses
 
     async def async_simple_test(self,

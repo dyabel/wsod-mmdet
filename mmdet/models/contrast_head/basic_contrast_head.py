@@ -83,16 +83,20 @@ class BaseContrastHead(nn.Module, metaclass=ABCMeta):
         self.dequeue()
         self.enqueue(k_batch,k_labels)
 
+        losses = dict()
         all_enc = torch.cat([l_pos, l_neg], dim=1)
+        if all_enc.size(0) == 0:
+            losses['contrastive_loss'] = torch.tensor(0.0).to(torch_device)
+            return losses
         try:
-            loss = self.loss_fn(all_enc,torch.zeros(all_enc.size(0)).long().to(torch_device))
+            weights = all_enc.new_ones(all_enc.size(0))
+            loss = self.loss_fn(all_enc,torch.zeros(all_enc.size(0)).long().to(torch_device),weights)
         except:
             raise Exception
         if torch.isnan(loss):
-            loss = torch.tensor([0.0]).to(torch_device)
+            loss = torch.tensor(0.0).to(torch_device)
             # print(strong_labels,weak_labels)
         # print(loss)
-        losses = dict()
         losses['contrastive_loss'] = loss
         return losses
     def enqueue(self,k_batch,k_labels):

@@ -6,6 +6,8 @@ from ..builder import DETECTORS, build_backbone, build_head, build_neck
 from .base import BaseDetector
 from mmdet.core import convert_label
 import wandb
+import random
+import time
 
 
 @DETECTORS.register_module()
@@ -47,6 +49,7 @@ class WSOD_RPN(BaseDetector):
 
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
+        # self.ss_pool = {}
 
         self.init_weights(pretrained=pretrained)
 
@@ -116,6 +119,7 @@ class WSOD_RPN(BaseDetector):
                       gt_bboxes,
                       gt_labels,
                       num_cls = 20,
+                      id = None,
                       strong_label=None,
                       gt_bboxes_ignore=None,
                       gt_masks=None,
@@ -154,6 +158,12 @@ class WSOD_RPN(BaseDetector):
         if (strong_label==-1).any():
             raise Exception
         assert strong_label[0] and not strong_label[1]
+        # if ids[1] in self.ss_pool:
+        #     random.seed(time.time())
+        #     if random.randint(0,1) == 1:
+        #         img_strong = tuple([torch.unsqueeze(xx[0], 0) for xx in img])
+        #         img_weak = tuple([torch.unsqueeze(xx[1], 0) for xx in img])
+
         x = self.extract_feat(img)
         losses = dict()
         gt_labels[1],_ = convert_label(gt_labels[1],num_cls[1])

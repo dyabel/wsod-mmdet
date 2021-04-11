@@ -6,7 +6,9 @@ from mmcv.runner import load_checkpoint
 
 from mmdet.utils import get_root_logger
 from ..builder import BACKBONES
-
+@BACKBONES.register_module()
+class MYVGG(VGG):
+    pass
 
 @BACKBONES.register_module()
 class SSDVGG(VGG):

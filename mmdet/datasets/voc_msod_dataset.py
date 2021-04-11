@@ -537,21 +537,12 @@ class VocMsodDataset(CustomDataset):
         results = dict(img_info=img_info, ann_info=ann_info)
         if self.proposals is not None:
             results['proposals'] = self.proposals[idx]
-            # print(results['proposals'])
         self.pre_pipeline(results)
         results = self.pipeline(results)
         results['num_cls'] = self.num_classes
-        # if self.id_labelattr[img_info['id']] == -1:
-        #     self.id_labelattr[img_info['id']] = True
-        #     print('error')
         results['strong_label'] = self.id_labelattr[img_info['id']]
-        # if self.id_labelattr[img_info['id']]:
-        #     results['strong_label'] = True
-        # elif self.id_labelattr[img_info['id']]:
-        #     results['strong_label'] = False
-        # else:
-        #     results['strong_label'] = False
-        #     labels = results['gt_labels'].data
+        results['id'] = img_info['id']
+
         return results
 
     def evaluate_coco(self,

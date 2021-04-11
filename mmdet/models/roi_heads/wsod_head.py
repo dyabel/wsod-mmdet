@@ -245,13 +245,13 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         torch_device = gt_labels[0].get_device()
         gt_bboxes[1] = oam_bboxes[0].to(torch_device)
         gt_labels[1] = oam_labels[0].to(torch_device)
-        # if oam_confidence>self.ss_cf_thr:
-        #     oam_confidence = 100
+        if oam_confidence>self.ss_cf_thr:
+            oam_confidence = 100
 
         if oam_confidence<wandb.config.ss_cf_thr and self.iters % 50 == 0 :
                 visualize_oam_boxes(oam_bboxes[0][:,:4],oam_labels[0],img[1],img_metas,
-                                win_name='T=%d E=%d'%(oam_confidence,self.iters//564),show=False,
-                                out_dir='../work_dirs/oam_bboxes3/',show_score_thr=0)
+                                win_name='T=%d E=%d'%(oam_confidence,self.iters//1128),show=False,
+                                out_dir='../work_dirs/oam_bboxes_3/',show_score_thr=0)
         losses_branch2 = self.forward_train_branch2(x,
                                                     img_metas,
                                                     proposal_list,
@@ -630,7 +630,6 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         :param oam_labels:
         :param img_metas:
         :param gt_bboxes_ignore:
-        :param gggg: 222
         :return:
         """
         torch_device = strong_labels.get_device()
@@ -734,8 +733,8 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             #                                                       rois_weak,
             #                                                       *bbox_targets_weak_branch2)
             # loss_weak_branch2 = dict()
-            # loss_weak_branch2['loss_cls_weak_branch2'] = loss_bbox_weak_branch2['loss_cls_strong']
-            # loss_weak_branch2['loss_bbox_weak_branch2'] = loss_bbox_weak_branch2['loss_bbox_strong']
+            # loss_weak_branch2['loss_cls_weak_branch2'] = loss_bbox_weak_branch2['loss_cls_strong']/(oam_confidence-2)
+            # loss_weak_branch2['loss_bbox_weak_branch2'] = loss_bbox_weak_branch2['loss_bbox_strong']/3
         loss_bbox_weak_branch2['acc_weak_branch2'] = acc_weak
         # bbox_results_weak_branch2.update(loss_bbox_weak_branch2=loss_weak_branch2)
         bbox_results_weak_branch2.update(loss_bbox_weak_branch2=loss_bbox_weak_branch2)

@@ -69,6 +69,11 @@ class EmbedBaseSampler(metaclass=ABCMeta):
 
         bboxes = bboxes[:, :4]
 
+        if gt_bboxes.size(1) == 5:
+            gt_weights = gt_bboxes[:,4]
+            gt_bboxes = gt_bboxes[:,:4]
+        else:
+            gt_weights = gt_bboxes.new_ones(gt_bboxes.size(0))
         gt_flags = bboxes.new_zeros((bboxes.shape[0], ), dtype=torch.uint8)
         # if self.add_gt_as_proposals and len(gt_bboxes) > 0:
         if gt_labels is not None:
@@ -135,7 +140,7 @@ class EmbedBaseSampler(metaclass=ABCMeta):
             #print('neg after concat',neg_inds.shape)
 
 
-            sampling_result = EmbedSamplingResult(pos_inds, neg_inds, bboxes, gt_bboxes,
+            sampling_result = EmbedSamplingResult(pos_inds, neg_inds, bboxes, gt_bboxes,gt_weights,
                                              assign_result, gt_flags,hard_neg_id=hard_neg_id,hard_neg_inds=hard_neg_inds)
 
 

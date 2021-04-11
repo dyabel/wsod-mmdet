@@ -97,7 +97,7 @@ def main():
     #     lr=0.001,
     # )
     wandb.config.oam_max_num = 100
-    wandb.config.score_thr2 = 0.1
+    wandb.config.score_thr2 = 0.05
     wandb.config.empty_cf = 30
     wandb.config.ss_cf_thr = 50
     # wandb.config.lr = 0.008

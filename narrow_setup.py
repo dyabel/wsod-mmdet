@@ -19,7 +19,7 @@ def gpu_info():
 def narrow_setup(interval=2):
     gpu_power, gpu_memory = gpu_info()
     i = 0
-    while gpu_memory > 4000 or gpu_power > 50:  # set waiting condition
+    while gpu_memory > 4000 or gpu_power > 100:  # set waiting condition
         gpu_power, gpu_memory = gpu_info()
         i = i % 5
         symbol = 'monitoring: ' + '>' * i + ' ' * (10 - i - 1) + '|'

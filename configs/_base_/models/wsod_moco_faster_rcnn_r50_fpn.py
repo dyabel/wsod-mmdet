@@ -1,5 +1,5 @@
 model = dict(
-    type='WSOD_RPN',
+    type='WSOD_MOCO',
     pretrained='torchvision://resnet50',
     backbone=dict(
         type='ResNet',

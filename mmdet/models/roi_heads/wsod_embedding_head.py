@@ -475,40 +475,7 @@ class WsodEmbedHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         # losses['contrastive_loss'] = torch.tensor([0.0])
         return losses
 
-        # duyu
-    def _bbox_forward_embedding_branch2(self, bbox_feats,hard_neg_roi_id=None,pos_roi_id=None):
-        """Box head forward function used in both training and testing."""
-        # TODO: a more flexible way to decide which feature maps to use
-        # time_start = time.time()
-        # cls_score, bbox_pred,min_pos_pos_dist, min_neg_neg_dist = self.bbox_head.forward_embedding(bbox_feats,hard_neg_roi_id=hard_neg_roi_id,pos_roi_id=pos_roi_id)
-        cls_score_fc,cls_score, bbox_pred,min_pos_pos_dist, min_neg_neg_dist = self.bbox_head.forward_embedding(bbox_feats,hard_neg_roi_id=hard_neg_roi_id,pos_roi_id=pos_roi_id)
-        # print(time.time()-time_start)
-        bbox_results = dict(
-            cls_score_fc=cls_score_fc,cls_score=cls_score, bbox_pred=bbox_pred, bbox_feats=bbox_feats,min_pos_pos_dist=min_pos_pos_dist,min_neg_neg_dist=min_neg_neg_dist)
-            # cls_score = cls_score, bbox_pred = bbox_pred, bbox_feats = bbox_feats, min_pos_pos_dist = min_pos_pos_dist, min_neg_neg_dist = min_neg_neg_dist)
         return bbox_results
-    #yangyk
-    def get_hard_neg_target(self,rois,sampling_results):
-        #print([res.hard_neg_bboxes for res in sampling_results])
-        #print(sampling_results)
-        flag = True
-        for res in sampling_results:
-            if res.hard_neg_bboxes is None:
-                flag = False
-        if flag is False:
-            hard_neg_labels = None
-            hard_neg_roi_id = None
-
-            return hard_neg_labels,hard_neg_roi_id
-
-        # time_start = time.time()
-        hard_neg_labels = sampling_results[0].hard_neg_labels
-        hard_neg_roi_id = sampling_results[0].hard_neg_id
-        # hard_neg_roi_id = torch.cat(hard_neg_roi_id, 0)
-        # hard_neg_labels = torch.cat(hard_neg_labels_list, 0)
-        # print(time.time()-time_start)
-
-        return hard_neg_labels,hard_neg_roi_id
     #duyu
     def _bbox_forward_train_second_pass(self, x, sampling_results, gt_bboxes, gt_labels,
                             img_metas,gt_bboxes_ignore=None):

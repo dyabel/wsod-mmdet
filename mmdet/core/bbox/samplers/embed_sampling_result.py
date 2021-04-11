@@ -22,7 +22,7 @@ class EmbedSamplingResult(util_mixins.NiceRepr):
         })>
     """
     #dy add hard_neg_id
-    def __init__(self, pos_inds, neg_inds, bboxes, gt_bboxes, assign_result,
+    def __init__(self, pos_inds, neg_inds, bboxes, gt_bboxes, gt_weights,assign_result,
                  gt_flags,hard_neg_id=None,hard_neg_inds=None):
         self.pos_inds = pos_inds
         self.neg_inds = neg_inds
@@ -40,11 +40,13 @@ class EmbedSamplingResult(util_mixins.NiceRepr):
             # hack for index error case
             assert self.pos_assigned_gt_inds.numel() == 0
             self.pos_gt_bboxes = torch.empty_like(gt_bboxes).view(-1, 4)
+            self.pos_gt_weights = gt_bboxes.new_ones(gt_bboxes.size(0))
         else:
             if len(gt_bboxes.shape) < 2:
                 gt_bboxes = gt_bboxes.view(-1, 4)
 
             self.pos_gt_bboxes = gt_bboxes[self.pos_assigned_gt_inds, :]
+            self.pos_gt_weights = gt_weights[self.pos_assigned_gt_inds]
 
         if assign_result.labels is not None:
             self.pos_gt_labels = assign_result.labels[pos_inds]

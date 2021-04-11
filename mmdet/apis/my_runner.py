@@ -127,12 +127,12 @@ class MyRunner(EpochBasedRunner):
     #             break
     #     if not inserted:
     #         self._hooks.insert(0, hook)
-    # def call_hook(self, fn_name):
-    #     """Call all hooks.
-    #
-    #     Args:
-    #         fn_name (str): The function name in each hook to be called, such as
-    #             "before_train_epoch".
-    #     """
-    #     for hook in self._hooks:
-    #         getattr(hook, fn_name)(self)
+    def call_hook(self, fn_name):
+        """Call all hooks.
+
+        Args:
+            fn_name (str): The function name in each hook to be called, such as
+                "before_train_epoch".
+        """
+        for hook in self._hooks:
+            getattr(hook, fn_name)(self)
