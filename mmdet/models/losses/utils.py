@@ -36,7 +36,7 @@ def weight_reduce_loss(loss, weight=None, reduction='mean', avg_factor=None):
         Tensor: Processed loss values.
     """
     # if weight is specified, apply element-wise weight
-    assert loss.size()==weight.size()
+    # assert loss.size()==weight.size()
     if weight is not None:
         loss = loss * weight
 

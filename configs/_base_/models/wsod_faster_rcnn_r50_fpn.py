@@ -48,11 +48,11 @@ model = dict(
                 type='DeltaXYWHBBoxCoder',
                 target_means=[0., 0., 0., 0.],
                 target_stds=[0.1, 0.1, 0.2, 0.2]),
-            reg_class_agnostic=True,
+            reg_class_agnostic=False,
             loss_cls=dict(
                 type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
             loss_cls_weak=dict(
-                type='MyCrossEntropyLoss', use_sigmoid=True, loss_weight=1.0),
+                type='MyCrossEntropyLoss',  loss_weight=1.0),
             loss_bbox=dict(type='SmoothL1Loss', loss_weight=1.0))),
     # model training and testing settings
     train_cfg=dict(
@@ -94,9 +94,9 @@ model = dict(
                 pos_fraction=0.25,
                 neg_pos_ub=-1,
                 add_gt_as_proposals=True),
-            second_pass_sampler=dict(
+            weak_sampler=dict(
                 type='RandomSampler',
-                num=512,
+                num=1024,
                 pos_fraction=1,
                 neg_pos_ub=-1,
                 add_gt_as_proposals=True),

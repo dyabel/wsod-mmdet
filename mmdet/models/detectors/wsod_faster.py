@@ -180,24 +180,24 @@ class WSOD_RPN(BaseDetector):
                                                                     gt_bboxes_ignore, gt_masks,
                                                                     **kwargs)
         losses.update(wsod_losses)
-        gt_bboxes[1] = oam_bboxes[:,:4]
-        # gt_labels[1] = oam_labels
-        #
-        rpn_losses_oam = self.rpn_head.forward_train_oam(
-            x,
-            img_metas,
-            gt_bboxes,
-            gt_labels=None,
-            gt_bboxes_ignore=gt_bboxes_ignore,
-            proposal_cfg=proposal_cfg)
-        rpn_losses = dict()
-        if oam_confidence > wandb.config.ss_cf_thr:
-            rpn_losses['loss_rpn_bbox_oam'] = rpn_losses_oam['loss_rpn_bbox']*0
-            rpn_losses['loss_rpn_cls_oam'] = rpn_losses_oam['loss_rpn_cls']*0
-        else:
-            rpn_losses['loss_rpn_bbox_oam'] = rpn_losses_oam['loss_rpn_bbox']
-            rpn_losses['loss_rpn_cls_oam'] = rpn_losses_oam['loss_rpn_cls']
-        losses.update(rpn_losses)
+        if self.with_rpn:
+            gt_bboxes[1] = oam_bboxes[:,:4]
+            #
+            rpn_losses_oam = self.rpn_head.forward_train_oam(
+                x,
+                img_metas,
+                gt_bboxes,
+                gt_labels=None,
+                gt_bboxes_ignore=gt_bboxes_ignore,
+                proposal_cfg=proposal_cfg)
+            rpn_losses = dict()
+            if oam_confidence > wandb.config.ss_cf_thr:
+                rpn_losses['loss_rpn_bbox_oam'] = rpn_losses_oam['loss_rpn_bbox']*0
+                rpn_losses['loss_rpn_cls_oam'] = rpn_losses_oam['loss_rpn_cls']*0
+            else:
+                rpn_losses['loss_rpn_bbox_oam'] = rpn_losses_oam['loss_rpn_bbox']
+                rpn_losses['loss_rpn_cls_oam'] = rpn_losses_oam['loss_rpn_cls']
+            losses.update(rpn_losses)
 
         return losses
 
@@ -224,10 +224,11 @@ class WSOD_RPN(BaseDetector):
         assert self.with_bbox, 'Bbox head must be implemented.'
 
         x = self.extract_feat(img)
-
-        if proposals is None:
+        # assert proposals==None
+        if self.with_rpn:
             proposal_list = self.rpn_head.simple_test_rpn(x, img_metas)
         else:
+            raise Exception
             proposal_list = proposals
 
         return self.wsod_head.simple_test(
@@ -244,32 +245,3 @@ class WSOD_RPN(BaseDetector):
         return self.wsod_head.aug_test(
             x, proposal_list, img_metas, rescale=rescale)
 
-    def forward_test(self, imgs, img_metas, proposals, **kwargs):
-        """
-        Args:
-            imgs (List[Tensor]): the outer list indicates test-time
-                augmentations and inner Tensor should have a shape NxCxHxW,
-                which contains all images in the batch.
-            img_metas (List[List[dict]]): the outer list indicates test-time
-                augs (multiscale, flip, etc.) and the inner list indicates
-                images in a batch.
-            proposals (List[List[Tensor]]): the outer list indicates test-time
-                augs (multiscale, flip, etc.) and the inner list indicates
-                images in a batch. The Tensor should have a shape Px4, where
-                P is the number of proposals.
-        """
-        for var, name in [(imgs, 'imgs'), (img_metas, 'img_metas')]:
-            if not isinstance(var, list):
-                raise TypeError(f'{name} must be a list, but got {type(var)}')
-
-        num_augs = len(imgs)
-        if num_augs != len(img_metas):
-            raise ValueError(f'num of augmentations ({len(imgs)}) '
-                             f'!= num of image meta ({len(img_metas)})')
-
-        if num_augs == 1:
-            return self.simple_test(imgs[0], img_metas[0], proposals[0],
-                                    **kwargs)
-        else:
-            # TODO: support test-time augmentation
-            assert NotImplementedError

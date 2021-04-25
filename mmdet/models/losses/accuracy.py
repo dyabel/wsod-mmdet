@@ -47,7 +47,7 @@ def accuracy(pred, target, topk=1, thresh=None):
         correct_k = correct[:k].reshape(-1).float().sum(0, keepdim=True)
         res.append(correct_k.mul_(100.0 / pred.size(0)))
     return res[0] if return_single else res
-
+@torch.no_grad()
 def img_level_accuracy(pred,target):
     # pred = pred.detach().cpu().numpy()
     # target = target.detach().cpu().numpy()

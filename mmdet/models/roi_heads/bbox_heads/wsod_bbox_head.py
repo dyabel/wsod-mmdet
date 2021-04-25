@@ -10,6 +10,7 @@ from mmdet.models.losses import accuracy,img_level_accuracy
 from mmdet.models.builder import build_loss
 from mmdet.core.utils import convert_label
 from mmdet.core import multiclass_nms,bbox_select_per_class
+import wandb
 
 
 @HEADS.register_module()
@@ -47,6 +48,7 @@ class ConvFCWSODHead(BBoxHead):
                  **kwargs):
         super(ConvFCWSODHead, self).__init__(*args, **kwargs)
         self.loss_cls = build_loss(loss_cls)
+        self.loss_weak_scale = wandb.config.loss_weak_scale
         self.loss_cls_weak = build_loss(loss_cls_weak)
         assert (num_shared_convs + num_shared_fcs + num_cls_convs +
                 num_cls_fcs + num_reg_convs + num_reg_fcs > 0)
@@ -175,29 +177,29 @@ class ConvFCWSODHead(BBoxHead):
         x_cls = x
         x_reg = x
 
-        for conv in self.cls_convs:
-            x_cls = conv(x_cls)
-        if x_cls.dim() > 2:
-            if self.with_avg_pool:
-                x_cls = self.avg_pool(x_cls)
-            x_cls = x_cls.flatten(1)
-        for fc in self.cls_fcs:
-            x_cls = self.relu(fc(x_cls))
-
-        for conv in self.reg_convs:
-            x_reg = conv(x_reg)
-        if x_reg.dim() > 2:
-            if self.with_avg_pool:
-                x_reg = self.avg_pool(x_reg)
-            x_reg = x_reg.flatten(1)
-        for fc in self.reg_fcs:
-            x_reg = self.relu(fc(x_reg))
+        # for conv in self.cls_convs:
+        #     x_cls = conv(x_cls)
+        # if x_cls.dim() > 2:
+        #     if self.with_avg_pool:
+        #         x_cls = self.avg_pool(x_cls)
+        #     x_cls = x_cls.flatten(1)
+        # for fc in self.cls_fcs:
+        #     x_cls = self.relu(fc(x_cls))
+        #
+        # for conv in self.reg_convs:
+        #     x_reg = conv(x_reg)
+        # if x_reg.dim() > 2:
+        #     if self.with_avg_pool:
+        #         x_reg = self.avg_pool(x_reg)
+        #     x_reg = x_reg.flatten(1)
+        # for fc in self.reg_fcs:
+        #     x_reg = self.relu(fc(x_reg))
 
         cls_score = self.fc_cls(x_cls) if self.with_cls else None
         bbox_pred = self.fc_reg_weak_branch1(x_reg) if self.with_reg else None
         cls_score = F.softmax(cls_score[:,:-1],dim=1)
+        # cls_score = F.softmax(cls_score,dim=1)
         bbox_pred = F.softmax(bbox_pred,dim=0)
-        # cls_proposal_mat = cls_score*bbox_pred
         return cls_score*bbox_pred
     #duyu
     def forward_strong_branch1(self, x):
@@ -205,23 +207,23 @@ class ConvFCWSODHead(BBoxHead):
         x_cls = x
         x_reg = x
 
-        for conv in self.cls_convs:
-            x_cls = conv(x_cls)
-        if x_cls.dim() > 2:
-            if self.with_avg_pool:
-                x_cls = self.avg_pool(x_cls)
-            x_cls = x_cls.flatten(1)
-        for fc in self.cls_fcs:
-            x_cls = self.relu(fc(x_cls))
-
-        for conv in self.reg_convs:
-            x_reg = conv(x_reg)
-        if x_reg.dim() > 2:
-            if self.with_avg_pool:
-                x_reg = self.avg_pool(x_reg)
-            x_reg = x_reg.flatten(1)
-        for fc in self.reg_fcs:
-            x_reg = self.relu(fc(x_reg))
+        # for conv in self.cls_convs:
+        #     x_cls = conv(x_cls)
+        # if x_cls.dim() > 2:
+        #     if self.with_avg_pool:
+        #         x_cls = self.avg_pool(x_cls)
+        #     x_cls = x_cls.flatten(1)
+        # for fc in self.cls_fcs:
+        #     x_cls = self.relu(fc(x_cls))
+        #
+        # for conv in self.reg_convs:
+        #     x_reg = conv(x_reg)
+        # if x_reg.dim() > 2:
+        #     if self.with_avg_pool:
+        #         x_reg = self.avg_pool(x_reg)
+        #     x_reg = x_reg.flatten(1)
+        # for fc in self.reg_fcs:
+        #     x_reg = self.relu(fc(x_reg))
 
         cls_score = self.fc_cls(x_cls) if self.with_cls else None
         bbox_pred = self.fc_reg(x_reg) if self.with_reg else None
@@ -247,23 +249,23 @@ class ConvFCWSODHead(BBoxHead):
         x_cls = x
         x_reg = x
 
-        for conv in self.cls_convs:
-            x_cls = conv(x_cls)
-        if x_cls.dim() > 2:
-            if self.with_avg_pool:
-                x_cls = self.avg_pool(x_cls)
-            x_cls = x_cls.flatten(1)
-        for fc in self.cls_fcs:
-            x_cls = self.relu(fc(x_cls))
-
-        for conv in self.reg_convs:
-            x_reg = conv(x_reg)
-        if x_reg.dim() > 2:
-            if self.with_avg_pool:
-                x_reg = self.avg_pool(x_reg)
-            x_reg = x_reg.flatten(1)
-        for fc in self.reg_fcs:
-            x_reg = self.relu(fc(x_reg))
+        # for conv in self.cls_convs:
+        #     x_cls = conv(x_cls)
+        # if x_cls.dim() > 2:
+        #     if self.with_avg_pool:
+        #         x_cls = self.avg_pool(x_cls)
+        #     x_cls = x_cls.flatten(1)
+        # for fc in self.cls_fcs:
+        #     x_cls = self.relu(fc(x_cls))
+        #
+        # for conv in self.reg_convs:
+        #     x_reg = conv(x_reg)
+        # if x_reg.dim() > 2:
+        #     if self.with_avg_pool:
+        #         x_reg = self.avg_pool(x_reg)
+        #     x_reg = x_reg.flatten(1)
+        # for fc in self.reg_fcs:
+        #     x_reg = self.relu(fc(x_reg))
 
         cls_score = self.fc_cls_branch2(x_cls) if self.with_cls else None
         bbox_pred = self.fc_reg_branch2(x_reg) if self.with_reg else None
@@ -389,17 +391,14 @@ class ConvFCWSODHead(BBoxHead):
              reduction_override=None):
         losses = dict()
         phi = torch.sum(cls_proposal_mat,dim=0)
-        torch_device = label_img_level.get_device()
-        label_weights = torch.ones(label_img_level.size(0)).to(torch_device)
+        label_weights = label_img_level.new_ones(label_img_level.size(0))
         avg_factor = max(torch.sum(label_weights > 0).float().item(), 1.)
-        # torch.set_printoptions(profile="full")
-        # num_cls = cls_proposal_mat.size(1)
-        # label_img_level,label_weights = convert_label(labels,num_cls)
         losses['loss_img_level'] = self.loss_cls_weak(phi,
                                                  label_img_level,
                                                  label_weights,
                                                  avg_factor=avg_factor,
-                                                 reduction_override=reduction_override)
+                                                 reduction_override=reduction_override)*self.loss_weak_scale
+        losses['acc_weak'] = img_level_accuracy(phi,label_img_level)
         return losses
 
     #duyu
@@ -424,8 +423,6 @@ class ConvFCWSODHead(BBoxHead):
                     avg_factor=avg_factor,
                     reduction_override=reduction_override)
                 losses['acc_strong'] = accuracy(cls_score, labels)
-                # losses['acc'] = 1
-                # print(losses['acc'])
         if bbox_pred is not None:
             bg_class_ind = self.num_classes
             # 0~self.num_classes-1 are FG, self.num_classes is BG
@@ -557,7 +554,8 @@ class ConvFCWSODHead(BBoxHead):
                    cfg=None):
         if isinstance(cls_score, list):
             cls_score = sum(cls_score) / float(len(cls_score))
-        scores = F.softmax(cls_score, dim=1) if cls_score is not None else None
+        # scores = F.softmax(cls_score, dim=1) if cls_score is not None else None
+        scores = cls_score
 
         if bbox_pred is not None:
             assert rois.size(0) == bbox_pred.size(0),(rois.size(0),bbox_pred.size(0))

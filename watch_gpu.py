@@ -17,7 +17,7 @@ def get_gpu_info():
 
     # 获取多个GPU的信息，存在列表里
 
-    gpu = Gpus[1]
+    gpu = Gpus[4]
     # for gpu in Gpus:
     #     print('gpu.id:', gpu.id)
     #     print('GPU总量：', gpu.memoryTotal)

@@ -49,8 +49,8 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             self.bbox_assigner = build_assigner(self.train_cfg.assigner)
             self.bbox_sampler = build_sampler(
                 self.train_cfg.sampler, context=self)
-            self.second_pass_sampler = build_sampler(
-                self.train_cfg.second_pass_sampler,context=self)
+            self.weak_sampler = build_sampler(
+                self.train_cfg.weak_sampler,context=self)
 
     def init_bbox_head(self, bbox_roi_extractor, bbox_head):
         """Initialize ``bbox_head``"""
@@ -123,23 +123,23 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         labels2,idx2 = torch.sort(labels2)
         bboxes1 = bboxes1[idx1]
         bboxes2 = bboxes2[idx2]
-        if (torch.abs(bboxes1 - bboxes2) > 3).any():
-            return False
+        # if (torch.abs(bboxes1 - bboxes2) > 3).any():
+        #     return False
         # print(bboxes1[0].unsqueeze(0),bboxes2[0].unsqueeze(0))
         # print(labels1,labels2)
-        # matched = []
-        # for i,ii in enumerate(labels1):
-        #     flag = False
-        #     for j in torch.where(labels2==ii)[0]:
-        #         if j in matched:
-        #             continue
-        #         if iou(bboxes1[i].unsqueeze(0),bboxes2[j].unsqueeze(0))[0][0]>0.6:
-        #             matched.append(j)
-        #             flag = True
-        #             break
-        #     if not flag: return False
-        # if len(matched)!=len(labels2):
-        #     return False
+        matched = []
+        for i,ii in enumerate(labels1):
+            flag = False
+            for j in torch.where(labels2==ii)[0]:
+                if j in matched:
+                    continue
+                if iou(bboxes1[i].unsqueeze(0),bboxes2[j].unsqueeze(0))[0][0]>0.5:
+                    matched.append(j)
+                    flag = True
+                    break
+            if not flag: return False
+        if len(matched)!=len(labels2):
+            return False
         return True
 
 
@@ -218,21 +218,8 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                        gt_masks=None)
 
         self.iters += 1
-        # if self.iters % 1000 == 0 and self.iters>wandb.config.warm_iter:
-            # self.ss_cf_thr -= 1
-            # self.ss_cf_thr = max(6,self.ss_cf_thr)
-            # self.oam_max_num += 1
-            # self.score_thr2 += 0.01
-            # self.score_thr2 = min(self.score_thr2,0.7)
-            # self.oam_discount -= 0.5
-            # self.oam_discount = max(1,self.oam_discount)
-            # self.oam_max_num = min(self.oam_max_num,20)
-            # print('nms:',self.nms)
-            # print('oam_discount:',self.oam_discount)
-            # print('ss_cf_thr:',self.ss_cf_thr)
-            # print('oam_max_num:', self.oam_max_num)
         if self.iters < wandb.config.warm_iter:
-                oam_confidence = 100
+            oam_confidence = 100
         else:
             x_weak = tuple([torch.unsqueeze(xx[1], 0) for xx in x])
             oam_confidence,oam_bboxes,oam_labels = self.OAM_Confidence(x_weak,
@@ -242,15 +229,17 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                      img_level_label,
                                                      max_iter=30,
                                                      )
+
+        if len(oam_labels[0].unique()) != gt_labels[1].sum():
+            # print('contradict with image level label')
+            oam_confidence = 100
         torch_device = gt_labels[0].get_device()
         gt_bboxes[1] = oam_bboxes[0].to(torch_device)
         gt_labels[1] = oam_labels[0].to(torch_device)
-        # if oam_confidence>self.ss_cf_thr:
-        #     oam_confidence = 100
 
         if oam_confidence<wandb.config.ss_cf_thr and self.iters % 50 == 0 :
                 visualize_oam_boxes(oam_bboxes[0][:,:4],oam_labels[0],img[1],img_metas,
-                                win_name='T=%d E=%d'%(oam_confidence,self.iters//564),show=False,
+                                win_name='T=%d E=%d'%(oam_confidence,self.iters//1128),show=False,
                                 out_dir='../work_dirs/oam_bboxes3/',show_score_thr=0)
         losses_branch2 = self.forward_train_branch2(x,
                                                     img_metas,
@@ -317,12 +306,13 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             assign_result = self.bbox_assigner.assign(
                 proposal_list[1], gt_bboxes[1], gt_bboxes_ignore[1],
                 gt_labels=None)
-            sampling_result = self.bbox_sampler.sample(
+            sampling_result = self.weak_sampler.sample(
                 assign_result,
                 proposal_list[1],
                 gt_bboxes[1],
                 gt_labels=None,
                 feats=[lvl_feat[1][None] for lvl_feat in x])
+            # print(len(sampling_result.pos_bboxes),len(sampling_result.neg_bboxes))
             sampling_results.append(sampling_result)
         losses = dict()
         # bbox head forward and loss
@@ -360,12 +350,13 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             assign_result = self.bbox_assigner.assign(
                 proposal_list[1], gt_bboxes[1], gt_bboxes_ignore[1],
                 gt_labels=None)
-            sampling_result = self.bbox_sampler.sample(
+            sampling_result = self.weak_sampler.sample(
                 assign_result,
                 proposal_list[1],
                 gt_bboxes[1],
                 gt_labels=None,
                 feats=[lvl_feat[1][None] for lvl_feat in x])
+            # print(len(sampling_result.neg_bboxes))
 
             sampling_results.append(sampling_result)
 
@@ -494,8 +485,12 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         loss_strong['loss_cls_strong_branch1_fp'] = loss_bbox_strong['loss_cls_strong']
         loss_strong['acc_strong_branch1_fp'] = loss_bbox_strong['acc_strong']
         loss_strong['loss_bbox_strong_branch1_fp'] = loss_bbox_strong['loss_bbox_strong']
-        bbox_results_strong.update(loss_bbox_strong_fp=loss_strong)
+        #weak loss for strong
         img_level_label_for_strong,_ = convert_label(gt_labels[0],gt_labels[1].size(0))
+        bbox_results_strong_weak = self._bbox_forward_weak(bbox_feats_strong)
+        loss_bbox_strong_weak = self.bbox_head.loss_weak(bbox_results_strong_weak['cls_proposal_mat'],img_level_label_for_strong)
+        loss_strong['loss_img_level_strong_fp'] = loss_bbox_strong_weak['loss_img_level']
+        bbox_results_strong.update(loss_bbox_strong_fp=loss_strong)
         img_shape = img_metas[0]['img_shape']
         scale_factors = img_metas[0]['scale_factor']
 
@@ -519,7 +514,10 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                   gt_labels[1])
         loss_weak = dict()
         loss_weak['loss_img_level_fp'] = loss_bbox_weak['loss_img_level']
+        loss_weak['acc_img_level_fp'] = loss_bbox_weak['acc_weak']
         bbox_results_weak.update(loss_bbox_weak_fp=loss_weak)
+        img_shape = img_metas[1]['img_shape']
+        scale_factors = img_metas[1]['scale_factor']
         bboxes_weak, _ = self.bbox_head.compute_bboxes(
             rois_weak,
             bbox_results_weak_pseudo['cls_score'],
@@ -575,6 +573,12 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         loss_strong['loss_cls_strong_branch1_sp'] = loss_bbox_strong['loss_cls_strong']
         loss_strong['acc_strong_branch1_sp'] = loss_bbox_strong['acc_strong']
         loss_strong['loss_bbox_strong_branch1_sp'] = loss_bbox_strong['loss_bbox_strong']
+        #weak loss for strong
+        img_level_label_for_strong,_ = convert_label(gt_labels[0],gt_labels[1].size(0))
+        bbox_results_strong_weak = self._bbox_forward_weak(bbox_feats_strong)
+        loss_bbox_strong_weak = self.bbox_head.loss_weak(bbox_results_strong_weak['cls_proposal_mat'],img_level_label_for_strong)
+        loss_strong['loss_img_level_strong_sp'] = loss_bbox_strong_weak['loss_img_level']
+
         bbox_results_strong.update(loss_bbox_strong_sp=loss_strong)
 
         bbox_results_weak = self._bbox_forward_weak(bbox_feats_weak)

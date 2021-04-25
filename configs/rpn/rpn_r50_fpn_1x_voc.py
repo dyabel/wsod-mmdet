@@ -1,5 +1,5 @@
 _base_ = [
-    '../_base_/models/rpn_r50_fpn.py', '../_base_/datasets/voc_detection.py',
+    '../_base_/models/rpn_r50_fpn.py', '../_base_/datasets/voc_detection07.py',
     '../_base_/schedules/schedule_1x.py', '../_base_/rpn_runtime.py'
 ]
 img_norm_cfg = dict(
@@ -15,4 +15,5 @@ train_pipeline = [
     dict(type='Collect', keys=['img', 'gt_bboxes']),
 ]
 data = dict(train=dict(pipeline=train_pipeline))
+# evaluation = dict(interval=1, metric='proposal_fast')
 evaluation = dict(interval=1, metric='proposal_fast')

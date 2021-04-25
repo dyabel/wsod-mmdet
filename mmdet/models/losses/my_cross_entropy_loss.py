@@ -64,8 +64,6 @@ def cross_entropy(pred,
         torch.Tensor: The calculated loss
     """
     # element-wise losses
-    # print(label.size())
-    # print(pred.size())
     loss = F.cross_entropy(pred, label, weight=class_weight, reduction='none')
 
     # apply weights and do the reduction
@@ -121,37 +119,10 @@ def binary_cross_entropy(pred,
     if weight is not None:
         weight = weight.float()
 
-    # print(pred.get_device())
-    # print(label.get_device())
-    # print(label)
-    # loss_all_cls = label*torch.log(pred.float()+eps)+(1.0-label)*torch.log(1.0+eps-pred.float())
-    # loc = torch.isnan(loss_all_cls)
-    # torch_device = label.get_device()
-    # loss_all_cls[loc] = torch.tensor(0.0).to(torch_device)
-    # print(loss_all_cls)
-    # loss = -torch.sum(loss_all_cls)
-    # tmp = pred > 1
-    # if tmp.any():
-    #     print('pred>1')
+
     pred = pred.clamp(1e-6,1-1e-6)
     label = label.clamp(0,1)
     loss = F.binary_cross_entropy(pred,label)
-    # loss = F.binary_cross_entropy(F.sigmoid(pred),label)
-    # loss = torch.sum(torch.square(pred.float()-label.float()))
-    # print(loss)
-    # print(torch.sum(label))
-    # loss = torch.abs(torch.sum(pred-label))
-    if torch.isnan(loss):
-        print('#'*100)
-        print('pred:',pred[0])
-        # print(0.0*torch.log(1.0-pred[0]))
-        raise EOFError
-        # raise EOFError
-    # loss = F.binary_cross_entropy_with_logits(
-    #     pred, label.float(), pos_weight=class_weight, reduction='none')
-    # do the reduction for the weighted loss
-    # loss = weight_reduce_loss(
-    #     loss, weight, reduction=reduction, avg_factor=avg_factor)
 
     return loss
 
@@ -220,12 +191,7 @@ class MyCrossEntropyLoss(nn.Module):
         self.loss_weight = loss_weight
         self.class_weight = class_weight
 
-        if self.use_sigmoid:
-            self.cls_criterion = binary_cross_entropy
-        elif self.use_mask:
-            self.cls_criterion = mask_cross_entropy
-        else:
-            self.cls_criterion = cross_entropy
+        self.cls_criterion = binary_cross_entropy
 
     def forward(self,
                 cls_score,

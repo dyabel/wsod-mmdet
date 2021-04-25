@@ -26,14 +26,18 @@ def bbox_select_per_class(multi_bboxes,
         tuple: (bboxes, labels, indices (optional)), tensors of shape (k, 5),
             (k), and (k). Labels are 0-based.
     """
+    if multi_bboxes.size(0) == 0:
+        return multi_bboxes,multi_bboxes.new_empty(0)
 
     num_classes = multi_scores.size(1) - 1
-    scores = multi_scores[:, :-1]
+    scores = torch.softmax(multi_scores,dim=1)[:, :-1]
+    # scores = torch.softmax(scores,dim=1)
     gt_class_ids = (img_level_label>0).expand(scores.size(0),-1)
     scores = scores[gt_class_ids].view(multi_scores.size(0),-1)
     # exclude background category
     if multi_bboxes.shape[1] > 4:
-        bboxes = multi_bboxes.view(multi_scores.size(0), -1, 4)
+        bboxes = multi_bboxes.view(multi_scores.size(0), -1, 4)[gt_class_ids]
+        # bboxes = multi_bboxes.view(multi_scores.size(0), -1, 4)
     else:
         bboxes = multi_bboxes[:, None].expand(
             multi_scores.size(0), int(torch.sum(img_level_label).item()), 4)
@@ -92,15 +96,14 @@ def first_pass_filter(multi_bboxes,
     """
 
     num_classes = multi_scores.size(1) - 1
-    # multi_scores = torch.sigmoid(multi_scores)
     scores = multi_scores[:, :-1]
     gt_class_ids = (img_level_label>0).expand(scores.size(0),-1)
     scores = scores[gt_class_ids].view(multi_scores.size(0),-1)
-    # scores = torch.sigmoid(scores)
 
     # exclude background category
     if multi_bboxes.shape[1] > 4:
-        bboxes = multi_bboxes.view(multi_scores.size(0), -1, 4)
+        bboxes = multi_bboxes.view(multi_scores.size(0), -1, 4)[gt_class_ids]
+        # bboxes = multi_bboxes.view(multi_scores.size(0), -1, 4)
     else:
         bboxes = multi_bboxes[:, None].expand(
             multi_scores.size(0), int(torch.sum(img_level_label).item()), 4)
@@ -141,8 +144,6 @@ def first_pass_filter(multi_bboxes,
     for cat in img_cats[1:]:
         bboxes = torch.cat((bboxes,cat_bbox_dict[cat.item()]),dim=0)
         labels = torch.cat((labels,cat_label_dict[cat.item()]),dim=0)
-    # print(multi_bboxes.size(),labels.size())
-    # print(img_level_label.nonzero())
     return bboxes, labels
 @torch.no_grad()
 def bbox_select_per_class_fixnum(multi_bboxes,
