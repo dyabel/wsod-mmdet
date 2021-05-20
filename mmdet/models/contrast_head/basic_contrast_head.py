@@ -89,7 +89,7 @@ class BaseContrastHead(nn.Module, metaclass=ABCMeta):
         except:
             raise Exception
         if torch.isnan(loss):
-            loss = torch.tensor([0.0]).to(torch_device)
+            loss = strong_labels.new_zeros(1).type(torch.float)
             # print(strong_labels,weak_labels)
         # print(loss)
         losses = dict()

@@ -27,6 +27,8 @@ def cross_entropy(pred,
     Returns:
         torch.Tensor: The calculated loss
     """
+    device = pred.device
+    # class_weight = torch.tensor([1.0,1.0,0.5,1.0,0.5,1.0,0.2,1.0,0.25,1.0,1.0,0.6,1.0,1.0,0.06,0.5,1.0,1.0,1.0,1.0,1.0]).to(device)
     # element-wise losses
     loss = F.cross_entropy(pred, label, weight=class_weight, reduction='none')
 

@@ -545,6 +545,7 @@ class VocMsodDataset(CustomDataset):
         #     self.id_labelattr[img_info['id']] = True
         #     print('error')
         results['strong_label'] = self.id_labelattr[img_info['id']]
+        results['id'] = img_info['id']
         # if self.id_labelattr[img_info['id']]:
         #     results['strong_label'] = True
         # elif self.id_labelattr[img_info['id']]:

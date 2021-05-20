@@ -91,15 +91,15 @@ def train_detector(model,
 
     # build runner
     # cfg.optimizer['lr'] = wandb.config.lr
-    # optimizer_strong = build_optimizer(model, cfg.optimizer_strong)
-    # optimizer_weak = build_optimizer(model, cfg.optimizer_weak)
-    optimizer = build_optimizer(model, cfg.optimizer)
+    optimizer_strong = build_optimizer(model, cfg.optimizer_strong)
+    optimizer_weak = build_optimizer(model, cfg.optimizer_weak)
+    # optimizer = build_optimizer(model, cfg.optimizer)
 
     runner = MyRunner(
         model,
-        # optimizer_strong=optimizer_strong,
-        # optimizer_weak=optimizer_weak,
-        optimizer=optimizer,
+        optimizer_strong=optimizer_strong,
+        optimizer_weak=optimizer_weak,
+        # optimizer=optimizer,
         work_dir=cfg.work_dir,
         logger=logger,
         meta=meta)

@@ -31,7 +31,6 @@ def bbox_select_per_class(multi_bboxes,
 
     num_classes = multi_scores.size(1) - 1
     scores = torch.softmax(multi_scores,dim=1)[:, :-1]
-    # scores = torch.softmax(scores,dim=1)
     gt_class_ids = (img_level_label>0).expand(scores.size(0),-1)
     scores = scores[gt_class_ids].view(multi_scores.size(0),-1)
     # exclude background category

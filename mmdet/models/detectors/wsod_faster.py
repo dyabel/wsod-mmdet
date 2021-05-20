@@ -117,6 +117,7 @@ class WSOD_RPN(BaseDetector):
                       gt_labels,
                       num_cls = 20,
                       strong_label=None,
+                      id = None,
                       gt_bboxes_ignore=None,
                       gt_masks=None,
                       proposals=None,
@@ -175,7 +176,7 @@ class WSOD_RPN(BaseDetector):
         else:
             proposal_list = proposals
         gt_bboxes[1] = proposal_list[1]
-        wsod_losses,oam_bboxes,oam_labels,oam_confidence = self.wsod_head.forward_train(x,img, img_metas, proposal_list,
+        wsod_losses,oam_bboxes,oam_labels,oam_confidence = self.wsod_head.forward_train(x,img,id, img_metas, proposal_list,
                                                                     gt_bboxes, gt_labels,
                                                                     gt_bboxes_ignore, gt_masks,
                                                                     **kwargs)

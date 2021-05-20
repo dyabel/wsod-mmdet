@@ -12,9 +12,10 @@ from mmdet.core.utils import convert_label
 from mmdet.utils import visualize_oam_boxes,iou
 import wandb
 import time
+import torch.nn as nn
 
 @HEADS.register_module()
-class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
+class WsodHead(BaseRoIHead, nn.Module, BBoxTestMixin, MaskTestMixin):
     """Simplest base roi head including one bbox head and one mask head."""
     def __init__(self,
                  bbox_roi_extractor=None,
@@ -39,6 +40,8 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         self.score_thr2 = wandb.config.score_thr2
         self.oam_discount = 1
         self.nms = 0.5
+        self.include_strong = 1
+        self.strong_ids = {}
         # self.init_contrast_head(contrast_head)
 
     def init_assigner_sampler(self):
@@ -180,7 +183,6 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
             T = 100
         return T,[oam_bboxes],[oam_labels]
 
-
     #duyu
     @torch.no_grad()
     def oam_forward(self,x,oam_bboxes,img_level_label,img_metas):
@@ -206,6 +208,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
     def forward_train(self,
                               x,
                               img,
+                              id,
                               img_metas,
                               proposal_list,
                               gt_bboxes,
@@ -216,8 +219,20 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         #branch1
         losses_branch1,oam_bboxes,oam_labels = self.forward_train_branch1(x,img_metas,proposal_list,gt_bboxes,gt_labels,gt_bboxes_ignore,
                                                        gt_masks=None)
-
+        strong_id = id[0].item()
+        if strong_id not in self.strong_ids or self.iters<wandb.config.warm_iter:
+            self.include_strong = 1
+            self.strong_ids[strong_id] = 1
+        else:
+            self.include_strong = 0
         self.iters += 1
+        if self.iters % 4509 == 0:
+            print(len(self.strong_ids))
+            self.strong_ids.clear()
+        # if self.iters%1128 < 120 or self.iters<wandb.config.warm_iter:
+        #     self.include_strong = 1
+        # else:
+        #     self.include_strong = 0
         if self.iters < wandb.config.warm_iter:
             oam_confidence = 100
         else:
@@ -239,7 +254,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
 
         if oam_confidence<wandb.config.ss_cf_thr and self.iters % 50 == 0 :
                 visualize_oam_boxes(oam_bboxes[0][:,:4],oam_labels[0],img[1],img_metas,
-                                win_name='T=%d E=%d'%(oam_confidence,self.iters//1128),show=False,
+                                win_name='T=%d E=%d'%(oam_confidence,self.iters//4509),show=False,
                                 out_dir='../work_dirs/oam_bboxes3/',show_score_thr=0)
         losses_branch2 = self.forward_train_branch2(x,
                                                     img_metas,
@@ -253,6 +268,7 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
         losses.update(losses_branch1)
         losses.update(losses_branch2)
         return losses,oam_bboxes[0],oam_labels[0],oam_confidence
+
     #duyu
     def forward_train_branch1(self,
                       x,
@@ -482,14 +498,14 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                       bbox_results_strong['bbox_pred'], rois_strong,
                                                       *bbox_targets_strong)
         loss_strong = dict()
-        loss_strong['loss_cls_strong_branch1_fp'] = loss_bbox_strong['loss_cls_strong']
+        loss_strong['loss_cls_strong_branch1_fp'] = loss_bbox_strong['loss_cls_strong']*self.include_strong
         loss_strong['acc_strong_branch1_fp'] = loss_bbox_strong['acc_strong']
-        loss_strong['loss_bbox_strong_branch1_fp'] = loss_bbox_strong['loss_bbox_strong']
+        loss_strong['loss_bbox_strong_branch1_fp'] = loss_bbox_strong['loss_bbox_strong']*self.include_strong
         #weak loss for strong
         img_level_label_for_strong,_ = convert_label(gt_labels[0],gt_labels[1].size(0))
         bbox_results_strong_weak = self._bbox_forward_weak(bbox_feats_strong)
         loss_bbox_strong_weak = self.bbox_head.loss_weak(bbox_results_strong_weak['cls_proposal_mat'],img_level_label_for_strong)
-        loss_strong['loss_img_level_strong_fp'] = loss_bbox_strong_weak['loss_img_level']
+        loss_strong['loss_img_level_strong_fp'] = loss_bbox_strong_weak['loss_img_level']*self.include_strong
         bbox_results_strong.update(loss_bbox_strong_fp=loss_strong)
         img_shape = img_metas[0]['img_shape']
         scale_factors = img_metas[0]['scale_factor']
@@ -570,14 +586,14 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                       bbox_results_strong['bbox_pred'], rois_strong,
                                                       *bbox_targets_strong)
         loss_strong = dict()
-        loss_strong['loss_cls_strong_branch1_sp'] = loss_bbox_strong['loss_cls_strong']
+        loss_strong['loss_cls_strong_branch1_sp'] = loss_bbox_strong['loss_cls_strong']*self.include_strong
         loss_strong['acc_strong_branch1_sp'] = loss_bbox_strong['acc_strong']
-        loss_strong['loss_bbox_strong_branch1_sp'] = loss_bbox_strong['loss_bbox_strong']
+        loss_strong['loss_bbox_strong_branch1_sp'] = loss_bbox_strong['loss_bbox_strong']*self.include_strong
         #weak loss for strong
         img_level_label_for_strong,_ = convert_label(gt_labels[0],gt_labels[1].size(0))
         bbox_results_strong_weak = self._bbox_forward_weak(bbox_feats_strong)
         loss_bbox_strong_weak = self.bbox_head.loss_weak(bbox_results_strong_weak['cls_proposal_mat'],img_level_label_for_strong)
-        loss_strong['loss_img_level_strong_sp'] = loss_bbox_strong_weak['loss_img_level']
+        loss_strong['loss_img_level_strong_sp'] = loss_bbox_strong_weak['loss_img_level']*self.include_strong
 
         bbox_results_strong.update(loss_bbox_strong_sp=loss_strong)
 
@@ -701,9 +717,9 @@ class WsodHead(BaseRoIHead, BBoxTestMixin, MaskTestMixin):
                                                               rois_strong,
                                                               *bbox_targets_strong_branch2)
         loss_strong_branch2 = dict()
-        loss_strong_branch2['loss_cls_strong_branch2'] = loss_bbox_strong_branch2['loss_cls_strong']
+        loss_strong_branch2['loss_cls_strong_branch2'] = loss_bbox_strong_branch2['loss_cls_strong']*self.include_strong
         loss_strong_branch2['acc_strong_branch2'] = loss_bbox_strong_branch2['acc_strong']
-        loss_strong_branch2['loss_bbox_strong_branch2'] = loss_bbox_strong_branch2['loss_bbox_strong']
+        loss_strong_branch2['loss_bbox_strong_branch2'] = loss_bbox_strong_branch2['loss_bbox_strong']*self.include_strong
         bbox_results_strong_branch2.update(loss_bbox_strong_branch2=loss_strong_branch2)
         #calculate loss_weak_branch2
         bbox_results_weak_branch2 = self._bbox_forward_strong_branch2(bbox_feats_weak)

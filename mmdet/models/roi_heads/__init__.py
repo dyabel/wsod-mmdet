@@ -17,7 +17,8 @@ from .sparse_roi_head import SparseRoIHead
 from .standard_roi_head import StandardRoIHead
 from .trident_roi_head import TridentRoIHead
 from .wsod_head import WsodHead
-from .wsod_contrast_head import WsodContrastHead
+# from .wsod_contrast_head import WsodContrastHead
+from .wsod_contrast_head_copy import WsodContrastHead
 from .embed_roi_head import EmbedRoIHead
 from .wsod_embedding_head import WsodEmbedHead
 
